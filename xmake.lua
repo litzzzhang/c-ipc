@@ -2,7 +2,6 @@ add_rules("mode.debug", "mode.release")
 set_languages("c++20")
 
 add_requires("spdlog", {configs = {std_format = true}})
-add_requires("lodepng")
 add_requires("eigen")
 
 target("c-ipc")
