@@ -4,7 +4,6 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/external/**",
                 "C:/Users/zalouti/AppData/Local/.xmake/repositories/xmake-repo/packages/**",
                 "./**",
                 "C:/Users/zalouti/AppData/Local/.xmake/packages/l/lodepng/@default/8574311f4b544fa89a3d8c3ee79d1929/include/",

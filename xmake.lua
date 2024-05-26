@@ -1,14 +1,34 @@
+set_project("c-ipc")
+set_xmakever("2.8.5")
+
 add_rules("mode.debug", "mode.release")
 set_languages("c++20")
 
 add_requires("spdlog", {configs = {std_format = true}})
 add_requires("eigen")
+add_requires("onetbb")
+
+option("c-ipc_examples", {default = true, description = "Build examples."})
+
+if is_plat("windows") then
+    add_defines("_CRT_SECURE_NO_WARNINGS")
+    add_cxflags("/EHsc")
+    add_cxflags("/Zc:preprocessor")
+    add_cuflags("-Xcompiler /Zc:preprocessor")
+end
+
+set_warnings("all")
 
 target("c-ipc")
-    set_kind("binary")
-    add_files("src/*.cpp")
-    add_packages("eigen")
+    set_kind("headeronly")
+    add_includedirs(".", {public = true})
+    add_headerfiles("(c-ipc/**.h)")
+    add_packages("spdlog", "eigen", "onetbb", {public = true})
+target_end()
 
+if has_config("c-ipc_examples") then
+    includes("examples")
+end
 --
 -- If you want to known more usage about xmake, please see https://xmake.io
 --

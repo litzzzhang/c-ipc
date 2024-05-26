@@ -1,2 +1,2 @@
-# Codimensional Incremental Potential Contact
+# Codimensional Incremental Potential Contact with Cloth
 
