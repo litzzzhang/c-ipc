@@ -7,8 +7,10 @@ set_languages("c++20")
 add_requires("spdlog", {configs = {std_format = true}})
 add_requires("eigen")
 add_requires("onetbb")
+add_requires("catch2")
 
 option("c-ipc_examples", {default = true, description = "Build examples."})
+option("c-ipc_tests", {default = true, description = "Build tests."})
 
 if is_plat("windows") then
     add_defines("_CRT_SECURE_NO_WARNINGS")
@@ -19,6 +21,10 @@ end
 
 set_warnings("all")
 
+if has_config("vl_tests") then
+    add_requires("catch2")
+end
+
 target("c-ipc")
     set_kind("headeronly")
     add_includedirs(".", {public = true})
@@ -28,6 +34,10 @@ target_end()
 
 if has_config("c-ipc_examples") then
     includes("examples")
+end
+
+if has_config("c-ipc_tests") then
+    includes("tests")
 end
 --
 -- If you want to known more usage about xmake, please see https://xmake.io

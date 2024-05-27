@@ -1,0 +1,5 @@
+target("test_gradient")
+    add_deps("c-ipc")
+    add_files("gradient.cpp")
+    add_packages("catch2")
+    add_tests("default")

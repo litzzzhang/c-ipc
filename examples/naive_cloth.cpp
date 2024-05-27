@@ -12,27 +12,43 @@ using namespace cipc;
 int main() {
     spdlog::set_pattern("[%m-%d %T] %^[%l]%$ %v");
     const std::string output_dir("./output/naive_cloth");
-    const std::string objfile_dir("./obj_files/");
-    const std::string obj_file("./obj_files/mat20x30.obj");
+    const std::string objfiles_dir("./obj_files");
+    const std::string obj_file("mat30x30.obj");
     // print information
     spdlog::info("*** Naive Cloth Simulation without C-IPC **");
+    if (!std::filesystem::exists(output_dir)) { std::filesystem::create_directories(output_dir); }
     spdlog::info("Output folder : {}", std::filesystem::absolute(output_dir).string());
 
+    spdlog::stopwatch sw;
     Mesh clothmesh;
-    load_obj(obj_file, std::filesystem::absolute(objfile_dir).string(), clothmesh);
+    std::string filepath = std::format("{}/{}", objfiles_dir, obj_file);
+    load_obj(filepath, clothmesh);
 
-    spdlog::info(
-        "Load mesh with {} vertices and {} elements", clothmesh.vertices_num, clothmesh.elem_num);
-    
-    Simulator<NaiveStvK> sim(clothmesh.vertices, clothmesh.indices, 0.1f, 0.1f, 1.0f);
-    
+    clothmesh.ComputeFaceNormals();
+
+    Simulator<NaiveStvK> sim(clothmesh, 0.1f, 0.0f, 1.0f);
+
     Matrix3Xr curr_pos = sim.get_position();
+    Matrix3Xr gravity(curr_pos);
+    gravity.setZero();
     // TO DO: set gravity
-    for (integer i = 0; i < static_cast<integer>(curr_pos.cols()); i++){
+    for (integer i = 0; i < static_cast<integer>(curr_pos.cols()); i++) {
         curr_pos.col(i)(2) = 2.0f;
+        gravity.col(i)(2) = -9.8f;
     }
     sim.set_position(curr_pos);
-    sim.Forward(0.001f);
+    sim.set_external_acceleration(gravity);
+    real timestep = 0.001f;
+
+    std::string framepath = std::format("{}/{}_{:04d}.obj", output_dir, "naive_cloth", 0);
+    write_obj(framepath, Mesh(sim.get_position(), sim.get_indice()));
+    spdlog::info("Frame 0, {:.2f}s elapsed", sw);
+    for (integer iter = 1; iter < 201; iter++) {
+        sim.Forward(timestep);
+        std::string framepath = std::format("{}/{}_{:04d}.obj", output_dir, "naive_cloth", iter);
+        write_obj(framepath, Mesh(sim.get_position(), sim.get_indice()));
+        spdlog::info("Frame {}, {:.2f}s elapsed", iter, sw);
+    }
 
     return 0;
 }

@@ -2,7 +2,7 @@
 
 /* constitutive model from class homework3 */
 #include "c-ipc/solver/eigen.h"
-#include "c-ipc/backend/stl_port.h"
+#include "c-ipc/backend/backend.h"
 
 namespace cipc {
 class NaiveStvK {
@@ -20,7 +20,8 @@ class NaiveStvK {
     // energy
     const real ComputeEnergyDensity(const Matrix3x2r &F) const;
     const real ComputeStretchingEnergy(
-        const Matrix3Xr &curr_pos, const Matrix3Xi &elements, const std::vector<Matrix3x2r> &D_inv) const;
+        const Matrix3Xr &curr_pos, const Matrix3Xi &elements,
+        const std::vector<Matrix3x2r> &D_inv) const;
 
     // grad and force
     const Matrix3x2r ComputeStressTensor(const Matrix3x2r &F) const;
@@ -45,9 +46,14 @@ inline const real NaiveStvK::ComputeEnergyDensity(const Matrix3x2r &F) const {
 }
 
 inline const real NaiveStvK::ComputeStretchingEnergy(
-    const Matrix3Xr &curr_pos, const Matrix3Xi &elements, const std::vector<Matrix3x2r> &D_inv) const {
+    const Matrix3Xr &curr_pos, const Matrix3Xi &elements,
+    const std::vector<Matrix3x2r> &D_inv) const {
     real energy = 0.0f;
     const integer element_num = static_cast<integer>(elements.cols());
+
+    // oneapi::tbb::parallel_reduce(oneapi::tbb::blocked_range<size_t>(0, element_num), 0.0f,
+    // [&]());
+    // TO DO: use parallel reduce to accelerate
     for (integer e = 0; e < element_num; e++) {
         const Vector3r v0 = curr_pos.col(elements.col(e)(0));
         const Vector3r v1 = curr_pos.col(elements.col(e)(1));
@@ -64,14 +70,14 @@ inline const Matrix3x2r NaiveStvK::ComputeStressTensor(const Matrix3x2r &F) cons
     const Vector4r dPsidE = C * E.reshaped();
     Matrix3x2r dPsidF = Matrix3x2r::Zero();
     Vector3r F1 = F.col(0), F2 = F.col(1);
-    Eigen::Matrix<real, 4, 6> dEdF = Eigen::Matrix<real, 4, 6>::Zero();
-    dEdF.block(0, 0, 1, 3) = F1;
-    dEdF.block(1, 0, 1, 3) = 0.5 * F2;
-    dEdF.block(2, 0, 1, 3) = 0.5 * F2;
-    dEdF.block(1, 3, 1, 3) = 0.5 * F1;
-    dEdF.block(2, 3, 1, 3) = 0.5 * F1;
-    dEdF.block(3, 3, 1, 3) = F2;
-    Vector6r vec_dPsidF = dEdF.transpose() * dPsidE;
+    Eigen::Matrix<real, 6, 4> dEdF = Eigen::Matrix<real, 6, 4>::Zero();
+    dEdF.block(0, 0, 3, 1) = F1;
+    dEdF.block(0, 1, 3, 1) = 0.5 * F2;
+    dEdF.block(0, 2, 3, 1) = 0.5 * F2;
+    dEdF.block(3, 1, 3, 1) = 0.5 * F1;
+    dEdF.block(3, 2, 3, 1) = 0.5 * F1;
+    dEdF.block(3, 3, 3, 1) = F2;
+    Vector6r vec_dPsidF = dEdF * dPsidE;
     dPsidF.block(0, 0, 3, 1) = vec_dPsidF(Vector3i(0, 1, 2));
     dPsidF.block(0, 1, 3, 1) = vec_dPsidF(Vector3i(3, 4, 5));
     return dPsidF;
@@ -82,19 +88,33 @@ inline const Matrix3Xr NaiveStvK::ComputeStretchingForce(
     const std::vector<std::vector<std::array<integer, 2>>> &gradient_map) const {
     const integer element_num = static_cast<integer>(elements.cols());
     std::vector<Matrix3r> gradient_per_element(element_num);
-    for (integer e = 0; e < element_num; e++) {
+
+    oneapi::tbb::parallel_for(0, element_num, [&](integer e) {
+        gradient_per_element[e] = Matrix3r::Zero();
         const Vector3r v0 = curr_pos.col(elements.col(e)(0));
         const Vector3r v1 = curr_pos.col(elements.col(e)(1));
         const Vector3r v2 = curr_pos.col(elements.col(e)(2));
         const Matrix3x2r F = curr_pos(Eigen::all, elements.col(e)) * D_inv[e];
-        real element_area = 0.5f * (v1 - v0).cross(v2 - v0).norm();
-
+        const Matrix2r E = 0.5f * (F.transpose() * F - Matrix2r::Identity());
+        const real element_area = 0.5f * (v1 - v0).cross(v2 - v0).norm();
+        const Vector4r C_dot_E = C * E.reshaped();
+        Vector4r dEdF[3][2];
+        for (integer i = 0; i < 3; i++) {
+            dEdF[i][0] << F(i, 0), F(i, 1) / 2, F(i, 1) / 2, 0;
+            dEdF[i][1] << 0, F(i, 0) / 2, F(i, 0) / 2, F(i, 1);
+        }
+        Eigen::Matrix<real, 3, 2> dPsidF;
+        dPsidF.setZero();
+        for (int i = 0; i < 3; i++)
+            for (int j = 0; j < 2; j++)
+                for (int m = 0; m < 4; m++) { dPsidF(i, j) += C_dot_E(m) * (dEdF[i][j])(m); }
         // dE/dx = dPsi/dF * dF/dx * area
-        gradient_per_element[e] = element_area * ComputeStressTensor(F) * D_inv[e].transpose();
-    }
+        gradient_per_element[e] = element_area * dPsidF * D_inv[e].transpose();
+    });
 
     integer vertex_num = static_cast<integer>(curr_pos.cols());
     Matrix3Xr gradient = Matrix3Xr::Zero(3, vertex_num);
+    // TO DO: parallel
     for (integer v = 0; v < vertex_num; v++) {
         for (const auto &tuple : gradient_map[v]) {
             const integer e = tuple[0];
@@ -116,15 +136,16 @@ inline const SparseMatrixXr NaiveStvK::ComputeStretchingHessian(
     const SparseMatrixXr &hessian_prev) const {
     const integer element_num = static_cast<integer>(elements.cols());
     std::vector<Matrix9r> hess_nonzeros;
-    hess_nonzeros.reserve(element_num);
-    for (integer e = 0; e < element_num; e++) {
+    hess_nonzeros.assign(element_num, Matrix9r::Zero());
+
+    oneapi::tbb::parallel_for(0, element_num, [&](integer e) {
         const Vector3r v0 = curr_pos.col(elements.col(e)(0));
         const Vector3r v1 = curr_pos.col(elements.col(e)(1));
         const Vector3r v2 = curr_pos.col(elements.col(e)(2));
         const Matrix3x2r F = curr_pos(Eigen::all, elements.col(e)) * D_inv[e];
-        real element_area = 0.5f * (v1 - v0).cross(v2 - v0).norm();
+        const real element_area = 0.5f * (v1 - v0).cross(v2 - v0).norm();
         const Matrix2r E = 0.5f * (F.transpose() * F - Matrix2r::Identity());
-        hess_nonzeros.push_back(Matrix9r::Zero());
+        // hess_nonzeros.push_back(Matrix9r::Zero());
         const Vector4r E_vec = E.reshaped();
         const Vector4r C_dot_E = C * E_vec;
         Vector4r dEdF[3][2];
@@ -169,10 +190,11 @@ inline const SparseMatrixXr NaiveStvK::ComputeStretchingHessian(
                 }
             }
         }
-    }
+    });
 
     SparseMatrixXr ret(hessian_prev);
     integer hessian_nonzero_num = static_cast<integer>(hessian_map.size());
+    // TO DO: parallel
     for (integer v = 0; v < hessian_nonzero_num; v++) {
         real val = 0;
         for (const auto &arr : hessian_map[v]) {
