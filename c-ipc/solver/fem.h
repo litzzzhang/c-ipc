@@ -221,10 +221,10 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         }
         energy_kinetic *= half_rho_inv_h2;
         const real energy_ss = ComputeStretchingAndShearingEnergy(x_next);
-        // const real energy_bending = ComputeBendingEnergy(x_next);
-        // return energy_kinetic + energy_ss + energy_bending;
+        const real energy_bending = ComputeBendingEnergy(x_next);
+        return energy_kinetic + energy_ss + energy_bending;
         // return energy_kinetic;
-        return energy_kinetic + energy_ss;
+        // return energy_kinetic + energy_ss;
     };
 
     // Its gradient.
@@ -238,10 +238,10 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         }
         gradient_kinetic *= density_ * inv_h * inv_h;
         const Matrix3Xr gradient_ss = -ComputeStretchingAndShearingForce(x_next);
-        // const Matrix3Xr gradient_bending = -ComputeBendingForce(x_next);
-        // return (gradient_kinetic + gradient_ss + gradient_bending).reshaped();
+        const Matrix3Xr gradient_bending = -ComputeBendingForce(x_next);
+        return (gradient_kinetic + gradient_ss + gradient_bending).reshaped();
         // return (gradient_kinetic).reshaped();
-        return (gradient_kinetic + gradient_ss).reshaped();
+        // return (gradient_kinetic + gradient_ss).reshaped();
     };
     auto Hess_E = [&](const Matrix3Xr &x_next) -> const SparseMatrixXr {
         std::vector<Eigen::Triplet<real>> kinetic_nonzeros;
@@ -254,10 +254,10 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
             }
         const SparseMatrixXr H_kinetic = FromTriplet(3 * dof_num, 3 * dof_num, kinetic_nonzeros);
         const SparseMatrixXr H_ss = ComputeStretchingAndShearingHessian(x_next);
-        // const SparseMatrixXr H_bending = ComputeBendingHessian(x_next);
+        const SparseMatrixXr H_bending = ComputeBendingHessian(x_next);
         // return H_kinetic;
-        return H_kinetic + H_ss;
-        // return H_kinetic + H_ss + H_bending;
+        // return H_kinetic + H_ss;
+        return H_kinetic + H_ss + H_bending;
     };
 
     Matrix3Xr xk = x0;
@@ -297,16 +297,16 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
 
     // update current mesh
     current_mesh_.ComputeFaceNormals();
-    // // naive collision
-    // for (integer i = 0; i < static_cast<integer>(current_mesh_.vertices.cols()); ++i) {
-    //     Vector3r point = current_mesh_.vertices.col(i);
-    //     const real point_norm = point.squaredNorm();
-    //     if (point_norm < 1) {
-    //         const real projected_velocity = velocity_.col(i).dot(point);
-    //         if (projected_velocity < 0) velocity_.col(i) -= projected_velocity * point /
-    //         point_norm;
-    //     }
-    // }
+    // naive collision
+    for (integer i = 0; i < static_cast<integer>(current_mesh_.vertices.cols()); ++i) {
+        Vector3r point = current_mesh_.vertices.col(i);
+        const real point_norm = point.squaredNorm();
+        if (point_norm < 0.35) {
+            const real projected_velocity = velocity_.col(i).dot(point);
+            if (projected_velocity < 0) velocity_.col(i) -= projected_velocity * point /
+            point_norm;
+        }
+    }
 }
 
 } // namespace cipc

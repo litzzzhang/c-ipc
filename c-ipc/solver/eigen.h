@@ -6,7 +6,8 @@
 
 namespace cipc {
 
-using real = float;
+// using real = float;
+using real = double;
 using integer = int32_t;
 // alias for basic vector and matrix
 using MatrixXr = Eigen::Matrix<real, Eigen::Dynamic, Eigen::Dynamic>;

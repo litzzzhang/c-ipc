@@ -1,5 +1,10 @@
-target("test_gradient")
+target("tinyobj")
+    set_kind("static")
     add_deps("c-ipc")
+    add_files("tiny_obj_loader.cc")
+
+target("test_gradient")
+    add_deps("c-ipc", "tinyobj")
     add_files("gradient.cpp")
     add_packages("catch2")
     add_tests("default")

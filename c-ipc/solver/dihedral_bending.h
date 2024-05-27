@@ -21,7 +21,7 @@ class DihedralBending {
     DihedralBending(const real bending_stiffness) : bending_stiffness_(bending_stiffness) {}
 
     static const real ComputeBendingAngle(const Vector3r &n1, const Vector3r &n2) {
-        return std::acosf(n1.dot(n2));
+        return std::acos(n1.dot(n2));
     }
 
     static const real
@@ -98,7 +98,8 @@ inline const Matrix3Xr DihedralBending::ComputeBendingForce(
     const integer element_num = static_cast<integer>(current_mesh.indices.cols());
     Matrix3Xr gradient = Matrix3Xr::Zero(3, vertex_num);
 
-    oneapi::tbb::parallel_for(0, element_num, [&](integer e) {
+    // TO DO: parallel
+    for (integer e = 0; e < element_num; e++) {
         const Vector3r normal = current_mesh.face_normals.col(e);
         // iterate each edge
         for (integer i = 0; i < 3; i++) {
@@ -154,7 +155,7 @@ inline const Matrix3Xr DihedralBending::ComputeBendingForce(
                 gradient(row, hinge_vectex_idx(3)) += -coefficient_signed / h[0][1] * n2(row);
             }
         }
-    });
+    }
     return -bending_stiffness_ * gradient;
 }
 
