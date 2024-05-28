@@ -168,22 +168,23 @@ inline const SparseMatrixXr DihedralBending::ComputeBendingHessian(
     SparseMatrixXr Hess(hess_size, hess_size);
     Hess.setZero();
     const integer element_num = static_cast<integer>(current_mesh.indices.cols());
-
-    for (integer e = 0; e < element_num; e++) {
-        for (integer i = 0; i < 3; i++) {
-            const Vector3r normal = current_mesh.face_normals.col(e);
-            // iterate each edge
-            const TriangleEdgeInfo &info = edge_info[e][i];
-            if (info.other_triangle == -1) { continue; }
+    const Matrix3Xi& elements_ = current_mesh.indices;
+    const Matrix3Xr& position = current_mesh.vertices;
+    for (integer elem = 0; elem < element_num; ++elem) {
+        const Vector3r normal = current_mesh.face_normals.col(elem);
+        // const Vector3r normal = ComputeNormal(position(Eigen::all, elements_.col(e)));
+        for (integer i = 0; i < 3; ++i) {
+            const TriangleEdgeInfo &info = edge_info[elem][i];
+            if (info.other_triangle == -1) continue;
             const Vector3r other_normal = current_mesh.face_normals.col(info.other_triangle);
             const real angle = ComputeBendingAngle(normal, other_normal);
-            const real rest_edge_length = info.edge_length;
-            Vector4i hinge_vectex_idx = FindVertexIndex(
-                current_mesh.indices.col(e), current_mesh.indices.col(info.other_triangle));
-            const Vector3r v0 = current_mesh.vertices.col(hinge_vectex_idx(0));
-            const Vector3r v1 = current_mesh.vertices.col(hinge_vectex_idx(1));
-            const Vector3r v2 = current_mesh.vertices.col(hinge_vectex_idx(2));
-            const Vector3r v3 = current_mesh.vertices.col(hinge_vectex_idx(3));
+            const real rest_shape_edge_length = info.edge_length;
+            Vector4i vertexIdx =
+                FindVertexIndex(elements_.col(elem), elements_.col(info.other_triangle));
+            const Vector3r v0 = position.col(vertexIdx(0));
+            const Vector3r v1 = position.col(vertexIdx(1));
+            const Vector3r v2 = position.col(vertexIdx(2));
+            const Vector3r v3 = position.col(vertexIdx(3));
             // face normal
             Vector3r n1 = ((v2 - v1).cross(v0 - v1)).normalized();
             Vector3r n2 = ((v3 - v1).cross(v2 - v1)).normalized();
@@ -196,33 +197,33 @@ inline const SparseMatrixXr DihedralBending::ComputeBendingHessian(
             h[1][1] = ComputeTriangleHeight(v1, v3, v2);
             h[2][1] = ComputeTriangleHeight(v2, v1, v3);
             // edge
-            Vector3r edge[3][2];
-            edge[0][0] = (v2 - v1);
-            edge[0][1] = (v2 - v1);
-            edge[1][0] = (v0 - v2);
-            edge[2][0] = (v0 - v1);
-            edge[1][1] = (v3 - v2);
-            edge[2][1] = (v3 - v1);
+            Vector3r e[3][2];
+            e[0][0] = (v2 - v1);
+            e[0][1] = (v2 - v1);
+            e[1][0] = (v0 - v2);
+            e[2][0] = (v0 - v1);
+            e[1][1] = (v3 - v2);
+            e[2][1] = (v3 - v1);
             // cos alpha
             real cos[2][2];
-            cos[0][0] = ((edge[0][0]).normalized()).dot((edge[2][0]).normalized());
-            cos[0][1] = ((edge[0][0]).normalized()).dot((edge[2][1]).normalized());
-            cos[1][0] = -((edge[0][0]).normalized()).dot((edge[1][0]).normalized());
-            cos[1][1] = -((edge[0][0]).normalized()).dot((edge[1][1]).normalized());
-
+            cos[0][0] = (e[0][0].normalized()).dot(e[2][0].normalized());
+            cos[1][0] = -(e[0][0].normalized()).dot(e[1][0].normalized());
+            cos[0][1] = (e[0][0].normalized()).dot(e[2][1].normalized());
+            cos[1][1] = -(e[0][0].normalized()).dot(e[1][1].normalized());
             // edge normal
             Vector3r m[3][2];
-            m[0][0] = edge[0][0].cross(n1).normalized();
-            m[1][0] = edge[1][0].cross(n1).normalized();
-            m[2][0] = n1.cross(edge[2][0]).normalized();
-            m[0][1] = n2.cross(edge[0][0]).normalized();
-            m[1][1] = n2.cross(edge[1][1]).normalized();
-            m[2][1] = edge[2][1].cross(n2).normalized();
+            m[0][0] = e[0][0].cross(n1).normalized();
+            m[1][0] = e[1][0].cross(n1).normalized();
+            m[2][0] = n1.cross(e[2][0]).normalized();
+            m[0][1] = n2.cross(e[0][0]).normalized();
+            m[1][1] = n2.cross(e[1][1]).normalized();
+            m[2][1] = e[2][1].cross(n2).normalized();
             real sign = 1;
             if ((n1.cross(n2)).dot(v2 - v1) < 0) sign = -1;
-            const real coefficient = 6 * rest_edge_length * rest_edge_length / rest_area(e);
-            const real coefficient_signed =
-                6 * rest_edge_length * rest_edge_length / rest_area(e) * abs(angle) * sign;
+            const real coefficient =
+                6 * rest_shape_edge_length * rest_shape_edge_length / rest_area(elem);
+            const real coefficient_signed = 2 * rest_shape_edge_length * rest_shape_edge_length
+                                            / rest_area(elem) * abs(angle) * sign;
             // compute grad theta
             Matrix3Xr gradient_theta = Matrix3Xr::Zero(3, 4);
             for (int row = 0; row < 3; row++) {
@@ -233,6 +234,7 @@ inline const SparseMatrixXr DihedralBending::ComputeBendingHessian(
                     cos[0][0] / h[2][0] * n1(row) + cos[0][1] / h[2][1] * n2(row);
                 gradient_theta(row, 3) += -1 / h[0][1] * n2(row);
             }
+            
             Matrix12r H = Matrix12r::Zero();
             H.block<3, 3>(0 * 3, 0 * 3) =
                 -1 / h[0][0] / h[0][0] * (m[0][0] * n1.transpose() + n1 * m[0][0].transpose());
@@ -241,17 +243,17 @@ inline const SparseMatrixXr DihedralBending::ComputeBendingHessian(
             H.block<3, 3>(1 * 3, 1 * 3) =
                 cos[1][0] / (h[1][0] * h[1][0])
                     * (m[1][0] * n1.transpose() + n1 * m[1][0].transpose())
-                - n1 * m[0][0].transpose() / edge[0][0].squaredNorm()
+                - n1 * m[0][0].transpose() / e[0][0].squaredNorm()
                 + cos[1][1] / (h[1][1] * h[1][1])
                       * (m[1][1] * n2.transpose() + n2 * m[1][1].transpose())
-                - n2 * m[0][1].transpose() / edge[0][0].squaredNorm();
+                - n2 * m[0][1].transpose() / e[0][0].squaredNorm();
             H.block<3, 3>(2 * 3, 2 * 3) =
                 cos[0][0] / (h[2][0] * h[2][0])
                     * (m[2][0] * n1.transpose() + n1 * m[2][0].transpose())
-                - n1 * m[0][0].transpose() / edge[0][0].squaredNorm()
+                - n1 * m[0][0].transpose() / e[0][0].squaredNorm()
                 + cos[0][1] / (h[2][1] * h[2][1])
                       * (m[2][1] * n2.transpose() + n2 * m[2][1].transpose())
-                - n2 * m[0][1].transpose() / edge[0][0].squaredNorm();
+                - n2 * m[0][1].transpose() / e[0][0].squaredNorm();
             H.block<3, 3>(1 * 3, 0 * 3) =
                 (-1 / (h[0][0] * h[1][0])
                  * (m[1][0] * n1.transpose() - cos[1][0] * n1 * m[0][0].transpose()))
@@ -283,19 +285,19 @@ inline const SparseMatrixXr DihedralBending::ComputeBendingHessian(
             H.block<3, 3>(1 * 3, 2 * 3) =
                 1 / (h[1][0] * h[2][0])
                     * (cos[1][0] * m[2][0] * n1.transpose() + cos[0][0] * n1 * m[1][0].transpose())
-                + n1 * m[0][0].transpose() / edge[0][0].squaredNorm()
+                + n1 * m[0][0].transpose() / e[0][0].squaredNorm()
                 + 1 / (h[1][1] * h[2][1])
                       * (cos[1][1] * m[2][1] * n2.transpose()
                          + cos[0][1] * n2 * m[1][1].transpose())
-                + n2 * m[0][1].transpose() / edge[0][0].squaredNorm();
+                + n2 * m[0][1].transpose() / e[0][0].squaredNorm();
             H.block<3, 3>(2 * 3, 1 * 3) =
                 (1 / (h[1][0] * h[2][0])
                      * (cos[1][0] * m[2][0] * n1.transpose() + cos[0][0] * n1 * m[1][0].transpose())
-                 + n1 * m[0][0].transpose() / edge[0][0].squaredNorm()
+                 + n1 * m[0][0].transpose() / e[0][0].squaredNorm()
                  + 1 / (h[1][1] * h[2][1])
                        * (cos[1][1] * m[2][1] * n2.transpose()
                           + cos[0][1] * n2 * m[1][1].transpose())
-                 + n2 * m[0][1].transpose() / edge[0][0].squaredNorm())
+                 + n2 * m[0][1].transpose() / e[0][0].squaredNorm())
                     .transpose();
             H.block<3, 3>(0 * 3, 3 * 3) = Matrix3r::Zero();
             H.block<3, 3>(3 * 3, 0 * 3) = Matrix3r::Zero();
@@ -308,12 +310,12 @@ inline const SparseMatrixXr DihedralBending::ComputeBendingHessian(
                 for (int j = 0; j < 3; j++)
                     for (int idx1 = 0; idx1 < 4; idx1++)
                         for (int idx2 = 0; idx2 < 4; idx2++) {
-                            Hess.coeffRef(
-                                3 * hinge_vectex_idx(idx1) + i, 3 * hinge_vectex_idx(idx2) + j) +=
+                            Hess.coeffRef(3 * vertexIdx(idx1) + i, 3 * vertexIdx(idx2) + j) +=
                                 H(3 * idx1 + i, 3 * idx2 + j);
                         }
         }
     }
+    
 
     Hess.makeCompressed();
     return bending_stiffness_ * Hess;

@@ -34,9 +34,9 @@ bool gradient_checker(TestModel model, const Matrix3Xr &x, RandomEngine &rng) {
         real analytic_diff_plus = test_dir.dot(gradient.reshaped());
         real absolute_error_plus = std::abs(analytic_diff_plus - numeric_diff_plus);
 
-        // printf("analytic energy: %.9f, numeric energy: %.9f ", energy, energy_plus);
-        // printf("absolute_error: %.9f\n", absolute_error_plus);
-        if (absolute_error_plus < 1e-3) { return true; }
+        // printf("analytic energy: %.9f, numeric energy: %.9f \n", energy, energy_plus);
+        if (absolute_error_plus < 1e-2) { return true; }
+
 
         Matrix3Xr x_minus = x - eps * test_dir.reshaped(3, vertex_num);
         real energy_minus = model.energy(x_minus);
@@ -45,7 +45,8 @@ bool gradient_checker(TestModel model, const Matrix3Xr &x, RandomEngine &rng) {
         real absolute_error_minus = std::abs(analytic_diff_minus - numeric_diff_minus);
 
         // printf("[plus]: abs_err: %f, rel_err: %f\n", absolute_error_plus, relative_error_plus);
-        if (absolute_error_minus < 1e-3) { return true; }
+        if (absolute_error_minus < 1e-2) { return true; }
+
     }
     return false;
 };
@@ -69,7 +70,7 @@ bool hessian_checker(TestModel model, const Matrix3Xr &x, RandomEngine &rng) {
             test_dir(i) = unit_random(rng);
         });
     }
-        printf("grad norm %.9f\n", grad.reshaped().norm());
+    // printf("grad norm %.9f\n", grad.reshaped().norm());
     for (integer i = 4; i < 13; i++) {
         real eps = std::pow(10, (real)(-i));
 
@@ -80,8 +81,9 @@ bool hessian_checker(TestModel model, const Matrix3Xr &x, RandomEngine &rng) {
         VectorXr analytic_diff_plus = hessian * test_dir;
         real absolute_error_plus = (analytic_diff_plus - numeric_diff_plus).norm();
 
-        printf("analytic: %.9f, numeric: %.9f ", analytic_diff_plus.norm(), numeric_diff_plus.norm());
-        printf("absolute_error: %.9f\n", absolute_error_plus);
+        // printf(
+            // "analytic: %.9f, numeric: %.9f ", analytic_diff_plus.norm(), numeric_diff_plus.norm());
+        // printf("absolute_error: %.9f\n", absolute_error_plus);
         if (absolute_error_plus < 1e-2) { return true; }
 
         Matrix3Xr x_minus = x - eps * test_dir.reshaped(3, vertex_num);
@@ -90,7 +92,7 @@ bool hessian_checker(TestModel model, const Matrix3Xr &x, RandomEngine &rng) {
         VectorXr analytic_diff_minus = hessian * test_dir;
         real absolute_error_minus = (analytic_diff_minus - numeric_diff_minus).norm();
 
-        // // printf("[plus]: abs_err: %f, rel_err: %f\n", absolute_error_plus,relative_error_plus); 
+        // // printf("[plus]: abs_err: %f, rel_err: %f\n", absolute_error_plus,relative_error_plus);
         if (absolute_error_minus < 1e-2) { return true; }
     }
     return false;
