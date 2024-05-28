@@ -1,5 +1,5 @@
-n = 20
-m = 20
+n = 16 
+m = 16
 
 f = open("mat" + str(n) + "x" + str(m) + ".obj", "w")
 s = float(max(n, m))

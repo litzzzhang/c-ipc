@@ -14,6 +14,7 @@ class Simulator {
     const Matrix3Xi get_indice() const { return current_mesh_.indices; }
     void set_position(const Matrix3Xr &new_pos) { current_mesh_.vertices = new_pos; }
     void set_velocity(const Matrix3Xr &new_vel) { velocity_ = new_vel; }
+    void set_dirichlet_boundary(const Matrix3Xr &dirichlet) { dirichlet_boundary_ = dirichlet; }
     void set_external_acceleration(const Matrix3Xr &new_acc) { external_acceleration_ = new_acc; }
 
     void Forward(const real timestep);
@@ -48,6 +49,7 @@ class Simulator {
     Mesh current_mesh_;
     // v
     Matrix3Xr velocity_;
+    Matrix3Xr dirichlet_boundary_;
     // a_ext
     Matrix3Xr external_acceleration_;
     // M
@@ -75,15 +77,15 @@ template <typename MaterialType>
 inline Simulator<MaterialType>::Simulator(
     const Mesh &mesh, const real thickness, const real bending_stiffness, const real density)
     : thickness_(thickness), bending_stiffness_(bending_stiffness), density_(density) {
-    // TO DO: change the degreee of freedom with constrain
+    // TO DO: modify bending stiffness coording to material parameters
     current_mesh_ = mesh;
     const Matrix3Xr &vertices = mesh.vertices;
     const Matrix3Xi &indices = mesh.indices;
 
-    const integer dof_num = static_cast<integer>(vertices.cols());
+    const integer vertex_num = static_cast<integer>(vertices.cols());
     // init velocity and acceleration
-    velocity_ = Matrix3Xr::Zero(3, dof_num);
-    external_acceleration_ = Matrix3Xr::Zero(3, dof_num);
+    velocity_ = Matrix3Xr::Zero(3, vertex_num);
+    external_acceleration_ = Matrix3Xr::Zero(3, vertex_num);
 
     bending_model_.bending_stiffness_ = bending_stiffness;
     // precompute mass matrix
@@ -103,7 +105,7 @@ inline Simulator<MaterialType>::Simulator(
             }
         }
     }
-    int_matrix_ = FromTriplet(dof_num, dof_num, int_mat_nonzeros);
+    int_matrix_ = FromTriplet(vertex_num, vertex_num, int_mat_nonzeros);
 
     for (integer e = 0; e < element_num; e++) {
         Matrix3r Ds = vertices(Eigen::all, indices.col(e));
@@ -114,7 +116,7 @@ inline Simulator<MaterialType>::Simulator(
     // assemble gradient map
     {
         stretching_and_shearing_gradient_map_.clear();
-        stretching_and_shearing_gradient_map_.resize(dof_num);
+        stretching_and_shearing_gradient_map_.resize(vertex_num);
         for (integer e = 0; e < element_num; ++e) {
             const VectorXi dof_map = current_mesh_.indices.col(e);
             for (integer i = 0; i < 3; ++i) {
@@ -140,7 +142,7 @@ inline Simulator<MaterialType>::Simulator(
                         }
         }
         stretching_and_shearing_hessian_ =
-            FromTriplet(3 * dof_num, 3 * dof_num, stretching_and_shearing_hess_nonzeros);
+            FromTriplet(3 * vertex_num, 3 * vertex_num, stretching_and_shearing_hess_nonzeros);
 
         stretching_and_shearing_hessian_nonzero_num_ =
             static_cast<integer>(stretching_and_shearing_hessian_.nonZeros());
@@ -179,6 +181,7 @@ inline Simulator<MaterialType>::Simulator(
     std::map<std::pair<integer, integer>, std::pair<integer, integer>> edge_map;
     for (integer e = 0; e < element_num; ++e) {
         for (integer i = 0; i < 3; ++i) {
+            // (0, 1) -> (1, 2) -> (2, 0)
             const integer idx0 = indices(i, e);
             const integer idx1 = indices((i + 1) % 3, e);
             const std::pair<integer, integer> key =
@@ -201,7 +204,7 @@ template <typename MaterialType>
 inline void Simulator<MaterialType>::Forward(const real timestep) {
     const real h = timestep;
     const real inv_h = 1.0f / h;
-    const integer dof_num = static_cast<integer>(current_mesh_.vertices.cols());
+    const integer vertex_num = static_cast<integer>(current_mesh_.vertices.cols());
 
     const Matrix3Xr &x0 = current_mesh_.vertices;
     const Matrix3Xr &v0 = velocity_;
@@ -209,6 +212,24 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
 
     const Matrix3Xr y = x0 + v0 * h + a * h * h;
     const real half_rho_inv_h2 = density_ * inv_h * inv_h / 2;
+
+    // calculate degree of freedom
+    Matrix3Xr free_dof(3, vertex_num), dirichlet_dof(3, vertex_num), dirichlet_value(3, vertex_num);
+    free_dof.setZero(); dirichlet_dof.setZero(); dirichlet_value.setZero();
+    
+    const real inf = std::numeric_limits<real>::infinity();
+    for (integer d = 0; d < 3; d++){
+        for (integer i = 0; i < vertex_num; i++){
+            if (dirichlet_boundary_(d, i) == inf){
+                free_dof(d, i) = 1;
+                dirichlet_dof(d, i) = 0;
+            }else{
+                free_dof(d, i) = 0;
+                dirichlet_dof(d, i) = 1;
+                dirichlet_value(d, i) = dirichlet_boundary_(d, i);
+            }
+        }
+    }
 
     auto E = [&](const Matrix3Xr &x_next) -> real {
         real energy_kinetic = 0;
@@ -222,6 +243,7 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         energy_kinetic *= half_rho_inv_h2;
         const real energy_ss = ComputeStretchingAndShearingEnergy(x_next);
         const real energy_bending = ComputeBendingEnergy(x_next);
+        // return energy_kinetic + energy_ss;
         return energy_kinetic + energy_ss + energy_bending;
         // return energy_kinetic;
         // return energy_kinetic + energy_ss;
@@ -239,7 +261,9 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         gradient_kinetic *= density_ * inv_h * inv_h;
         const Matrix3Xr gradient_ss = -ComputeStretchingAndShearingForce(x_next);
         const Matrix3Xr gradient_bending = -ComputeBendingForce(x_next);
-        return (gradient_kinetic + gradient_ss + gradient_bending).reshaped();
+        const Matrix3Xr total_grad = gradient_kinetic + gradient_ss + gradient_bending;
+        // const Matrix3Xr total_grad = gradient_kinetic + gradient_ss;
+        return total_grad.cwiseProduct(free_dof).reshaped();
         // return (gradient_kinetic).reshaped();
         // return (gradient_kinetic + gradient_ss).reshaped();
     };
@@ -252,19 +276,38 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
                 kinetic_nonzeros.push_back(Eigen::Triplet<real>(
                     triplet.row() * 3 + d, triplet.col() * 3 + d, triplet.value() * scale));
             }
-        const SparseMatrixXr H_kinetic = FromTriplet(3 * dof_num, 3 * dof_num, kinetic_nonzeros);
+        const SparseMatrixXr H_kinetic = FromTriplet(3 * vertex_num, 3 * vertex_num, kinetic_nonzeros);
         const SparseMatrixXr H_ss = ComputeStretchingAndShearingHessian(x_next);
         const SparseMatrixXr H_bending = ComputeBendingHessian(x_next);
+        // const SparseMatrixXr H = H_kinetic + H_ss;
+        const SparseMatrixXr H = H_kinetic + H_ss + H_bending;
+
+        const auto ddof = dirichlet_dof.reshaped().template cast<integer>();
+        const integer size = static_cast<integer>(H.rows());
+        const std::vector<Eigen::Triplet<real>> H_nonzeros = ToTriplet(H);
+        std::vector<Eigen::Triplet<real>> H_modified_nonzeros;
+        for( const auto& triplet : H_nonzeros){
+            const integer row = triplet.row();
+            const integer col = triplet.col();
+            if (ddof(row) == 1 || ddof(col) == 1) continue;
+            H_modified_nonzeros.push_back(triplet);
+        }
+
+        for (integer i = 0; i < size; i++){
+            if (ddof(i) == 1){
+                H_modified_nonzeros.push_back({i, i, 1});
+            }
+        }
         // return H_kinetic;
         // return H_kinetic + H_ss;
-        return H_kinetic + H_ss + H_bending;
+        return FromTriplet(size, size, H_modified_nonzeros);
     };
 
-    Matrix3Xr xk = x0;
+    Matrix3Xr xk = x0.cwiseProduct(free_dof) + dirichlet_value;
     real Ek = E(xk);
     VectorXr gk = grad_E(xk);
-    integer newton_iter = 100;
-    while (gk.cwiseAbs().maxCoeff() > 1e-5) {
+    integer newton_iter = 200;
+    while (gk.cwiseAbs().maxCoeff() > 1e-3) {
         cipc_assert(newton_iter > 0, "Newton iteration failed");
         Eigen::SimplicialLDLT<SparseMatrixXr> direct_solver(Hess_E(xk));
         const VectorXr pk = direct_solver.solve(-gk);
@@ -272,16 +315,15 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         // line search
         // TO DO: add ACCD aware line search
         real ls_step = 1.0f;
-        real E_updated = E(xk + pk.reshaped(3, dof_num));
+        real E_updated = E(xk + pk.reshaped(3, vertex_num));
         integer ls_iter = 50;
         while (E_updated > Ek + 0.01f * ls_step * gk.dot(pk)) {
-            cipc_assert(
-                ls_iter > 0, "Line search failed to find sufficient decrease");
+            cipc_assert(ls_iter > 0, "Line search failed to find sufficient decrease");
             ls_step /= 2;
-            E_updated = E(xk + ls_step * pk.reshaped(3, dof_num));
+            E_updated = E(xk + ls_step * pk.reshaped(3, vertex_num));
             ls_iter -= 1;
         }
-        xk += ls_step * pk.reshaped(3, dof_num);
+        xk += ls_step * pk.reshaped(3, vertex_num);
         // Exit if no progress could be made.
         if (ls_step * pk.cwiseAbs().maxCoeff() <= 1e-12) { break; }
 
@@ -291,22 +333,20 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
     }
 
     // update pos and vel
-    const Matrix3Xr next_position = xk;
-    velocity_ = (next_position - current_mesh_.vertices) * inv_h;
-    current_mesh_.vertices = next_position;
+    velocity_ = (xk - current_mesh_.vertices) * inv_h;
+    current_mesh_.vertices = xk;
 
     // update current mesh
-    current_mesh_.ComputeFaceNormals();
     // naive collision
-    for (integer i = 0; i < static_cast<integer>(current_mesh_.vertices.cols()); ++i) {
-        Vector3r point = current_mesh_.vertices.col(i);
-        const real point_norm = point.squaredNorm();
-        if (point_norm < 0.35) {
-            const real projected_velocity = velocity_.col(i).dot(point);
-            if (projected_velocity < 0) velocity_.col(i) -= projected_velocity * point /
-            point_norm;
-        }
-    }
+    // for (integer i = 0; i < static_cast<integer>(current_mesh_.vertices.cols()); ++i) {
+    //     Vector3r point = current_mesh_.vertices.col(i);
+    //     const real point_norm = point.squaredNorm();
+    //     if (point_norm < 0.35) {
+    //         const real projected_velocity = velocity_.col(i).dot(point);
+    //         if (projected_velocity < 0) velocity_.col(i) -= projected_velocity * point /
+    //         point_norm;
+    //     }
+    // }
 }
 
 } // namespace cipc

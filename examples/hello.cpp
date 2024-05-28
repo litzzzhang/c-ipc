@@ -4,25 +4,39 @@
 using namespace cipc;
 
 int main(int argc, char **argv) {
-    spdlog::info("checker check");
-    integer dim = 9999;
-    std::default_random_engine rng;
-    rng.seed((unsigned)std::chrono::system_clock::now().time_since_epoch().count());
-    static std::uniform_real_distribution<real> two_random(0.0, 2.0);
+
+    spdlog::set_pattern("[%m-%d %T] %^[%l]%$ %v");
+    spdlog::info("stretching energy and gradient test begin.");
+    Mesh clothmesh;
+    std::string filepath = std::format("{}/{}", "./obj_files", "mat4x4.obj");
+    load_obj(filepath, clothmesh);
+    clothmesh.ComputeFaceNormals();
+    Simulator<NaiveStvK> sim(clothmesh, 0.1f, 0.5f, 1.0f);
+    Matrix3Xr curr_pos = sim.get_position();
+    Matrix3Xr gravity(curr_pos), dirichlet(curr_pos);
+    const real inf = std::numeric_limits<real>::infinity();
+    gravity.setZero(), dirichlet.setConstant(inf);
+    for (integer i = 0; i < static_cast<integer>(curr_pos.cols()); i++) {
+        curr_pos(2, i) = 2.0f;
+        gravity(2, i) = -9.8f;
+    }
+    // fix a point
+    dirichlet.col(0) = curr_pos.col(0);
+    sim.set_position(curr_pos);
+    sim.set_external_acceleration(gravity);
+    sim.set_dirichlet_boundary(dirichlet);
 
     auto energyfunc = [&](const Matrix3Xr &pos) {
-        return pos.reshaped().dot(pos.reshaped().transpose());
-    };
-    auto gradientfunc = [&](const Matrix3Xr &pos) {
-        return 2.0 * pos;
-    };
-    auto hessianfunc = [&](const Matrix3Xr &pos) {
-        integer hess_size = 3 * static_cast<integer>(pos.cols());
-        std::vector<Eigen::Triplet<real>> triplist;
-        for (integer i = 0; i < hess_size; i++) { triplist.push_back({i, i, 2.0}); }
-        return FromTriplet(hess_size, hess_size, triplist);
+        return sim.ComputeStretchingAndShearingEnergy(pos);
     };
 
+    auto gradientfunc = [&](const Matrix3Xr &pos) {
+        return -sim.ComputeStretchingAndShearingForce(pos);
+    };
+
+    auto hessianfunc = [&](const Matrix3Xr &pos) {
+        return sim.ComputeStretchingAndShearingHessian(pos);
+    };
     using EnergyFuncType = decltype(energyfunc);
     using GradFuncType = decltype(gradientfunc);
     using HessFuncType = decltype(hessianfunc);
@@ -35,17 +49,14 @@ int main(int argc, char **argv) {
     };
 
     Model model(energyfunc, gradientfunc, hessianfunc);
+
+    std::default_random_engine rng;
+
+    rng.seed((unsigned)std::chrono::system_clock::now().time_since_epoch().count());
+    real timestep = 0.001f;
     for (integer i = 0; i < 1000; i++) {
-        VectorXr test_vec = VectorXr::Zero(dim);
-        oneapi::tbb::parallel_for(0, dim, [&](integer i) {
-            test_vec(i) = two_random(rng);
-        });
-        if (!gradient_checker(model, test_vec.reshaped(3, dim / 3), rng)) {
-            spdlog::error("gradient wrong");
-        }
-        if (!hessian_checker(model, test_vec.reshaped(3, dim / 3), rng)) {
-            spdlog::error("hessian wrong");
-        }
+        sim.Forward(timestep);
+        if (!gradient_checker(model, sim.get_position(), rng)) { printf("error\n"); }
     }
 
     return 0;

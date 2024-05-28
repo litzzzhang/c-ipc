@@ -4,7 +4,7 @@ target("tinyobj")
     add_files("tiny_obj_loader.cc")
 
 target("mytest")
-    add_deps("c-ipc")
+    add_deps("c-ipc", "tinyobj")
     add_files("hello.cpp")
 
 target("naive_cloth")

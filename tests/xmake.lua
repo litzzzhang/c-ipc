@@ -8,3 +8,8 @@ target("test_gradient")
     add_files("gradient.cpp")
     add_packages("catch2")
     add_tests("default")
+
+target("test_parallel")
+    add_deps("c-ipc")
+    add_files("parallel_test.cpp")
+    add_packages("catch2")

@@ -5,6 +5,19 @@
 
 namespace cipc {
 
+static bool floatnum_nearly_equal(real a, real b, real epsilon) {
+    real abs_a = std::abs(a);
+    real abs_b = std::abs(b);
+    real diff = std::abs(a - b);
+    if (a == b) {
+        return true;
+    } else if (a == 0 || b == 0 || diff < std::numeric_limits<real>::min()) {
+        return diff < (epsilon * std::numeric_limits<real>::min());
+    } else {
+        return diff / (abs_a + abs_b) < epsilon;
+    }
+}
+
 template <typename TestModel, typename RandomEngine>
 bool gradient_checker(TestModel model, const Matrix3Xr &x, RandomEngine &rng) {
     integer vertex_num = static_cast<integer>(x.cols());
@@ -32,21 +45,15 @@ bool gradient_checker(TestModel model, const Matrix3Xr &x, RandomEngine &rng) {
         real energy_plus = model.energy(x_plus);
         real numeric_diff_plus = (energy_plus - energy) / eps;
         real analytic_diff_plus = test_dir.dot(gradient.reshaped());
-        real absolute_error_plus = std::abs(analytic_diff_plus - numeric_diff_plus);
-
-        // printf("analytic energy: %.9f, numeric energy: %.9f \n", energy, energy_plus);
-        if (absolute_error_plus < 1e-2) { return true; }
-
+        if (floatnum_nearly_equal(numeric_diff_plus, analytic_diff_plus, 1e-2)) { return true; }
 
         Matrix3Xr x_minus = x - eps * test_dir.reshaped(3, vertex_num);
         real energy_minus = model.energy(x_minus);
         real numeric_diff_minus = (energy - energy_minus) / eps;
         real analytic_diff_minus = test_dir.dot(gradient.reshaped());
-        real absolute_error_minus = std::abs(analytic_diff_minus - numeric_diff_minus);
 
-        // printf("[plus]: abs_err: %f, rel_err: %f\n", absolute_error_plus, relative_error_plus);
-        if (absolute_error_minus < 1e-2) { return true; }
-
+        if (floatnum_nearly_equal(numeric_diff_minus, analytic_diff_minus, 1e-2)) { return true; }
+        printf("[plus]: analy: %f, numeric: %f\n", analytic_diff_plus, numeric_diff_plus);
     }
     return false;
 };
@@ -82,7 +89,7 @@ bool hessian_checker(TestModel model, const Matrix3Xr &x, RandomEngine &rng) {
         real absolute_error_plus = (analytic_diff_plus - numeric_diff_plus).norm();
 
         // printf(
-            // "analytic: %.9f, numeric: %.9f ", analytic_diff_plus.norm(), numeric_diff_plus.norm());
+        // "analytic: %.9f, numeric: %.9f ", analytic_diff_plus.norm(), numeric_diff_plus.norm());
         // printf("absolute_error: %.9f\n", absolute_error_plus);
         if (absolute_error_plus < 1e-2) { return true; }
 

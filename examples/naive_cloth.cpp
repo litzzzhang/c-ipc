@@ -13,7 +13,7 @@ int main() {
     spdlog::set_pattern("[%m-%d %T] %^[%l]%$ %v");
     const std::string output_dir("./output/naive_cloth");
     const std::string objfiles_dir("./obj_files");
-    const std::string obj_file("mat10x10.obj");
+    const std::string obj_file("mat16x16.obj");
     // print information
     spdlog::info("*** Naive Cloth Simulation without C-IPC **");
     if (!std::filesystem::exists(output_dir)) { std::filesystem::create_directories(output_dir); }
@@ -24,26 +24,30 @@ int main() {
     std::string filepath = std::format("{}/{}", objfiles_dir, obj_file);
     load_obj(filepath, clothmesh);
 
-    clothmesh.ComputeFaceNormals();
-
-    Simulator<NaiveStvK> sim(clothmesh, 0.1f, 0.0f, 1.0f);
+    clothmesh.vertices *= 2.0;
+    
+    Simulator<NaiveStvK> sim(clothmesh, 0.1f, 0.5f, 1.0f);
 
     Matrix3Xr curr_pos = sim.get_position();
-    Matrix3Xr gravity(curr_pos);
-    gravity.setZero();
-    // TO DO: set gravity
-    for (integer i = 0; i < static_cast<integer>(curr_pos.cols()); i++) {
-        curr_pos.col(i)(2) = 2.0f;
-        gravity.col(i)(2) = -9.8f;
+    Matrix3Xr gravity(curr_pos), dirichlet(curr_pos);
+    const real inf = std::numeric_limits<real>::infinity();
+    gravity.setZero(), dirichlet.setConstant(inf);
+    integer vertex_num = static_cast<integer>(curr_pos.cols());
+    for (integer i = 0; i < vertex_num; i++) {
+        curr_pos(2, i) = 2.0f;
+        gravity(2, i) = -9.8f;
     }
+    // fix a point
+    dirichlet.col(vertex_num - 1) = curr_pos.col(vertex_num - 1);
     sim.set_position(curr_pos);
     sim.set_external_acceleration(gravity);
+    sim.set_dirichlet_boundary(dirichlet);
     real timestep = 0.001f;
 
     std::string framepath = std::format("{}/{}_{:04d}.obj", output_dir, "naive_cloth", 0);
     write_obj(framepath, Mesh(sim.get_position(), sim.get_indice()));
     spdlog::info("Frame 0, {:.2f}s elapsed", sw);
-    for (integer iter = 1; iter < 201; iter++) {
+    for (integer iter = 1; iter < 1001; iter++) {
         sim.Forward(timestep);
         std::string framepath = std::format("{}/{}_{:04d}.obj", output_dir, "naive_cloth", iter);
         write_obj(framepath, Mesh(sim.get_position(), sim.get_indice()));

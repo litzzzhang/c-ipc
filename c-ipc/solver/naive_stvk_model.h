@@ -48,21 +48,27 @@ inline const real NaiveStvK::ComputeEnergyDensity(const Matrix3x2r &F) const {
 inline const real NaiveStvK::ComputeStretchingEnergy(
     const Matrix3Xr &curr_pos, const Matrix3Xi &elements,
     const std::vector<Matrix3x2r> &D_inv) const {
-    real energy = 0.0f;
     const integer element_num = static_cast<integer>(elements.cols());
 
-    // oneapi::tbb::parallel_reduce(oneapi::tbb::blocked_range<size_t>(0, element_num), 0.0f,
-    // [&]());
-    // TO DO: use parallel reduce to accelerate
-    for (integer e = 0; e < element_num; e++) {
-        const Vector3r v0 = curr_pos.col(elements.col(e)(0));
-        const Vector3r v1 = curr_pos.col(elements.col(e)(1));
-        const Vector3r v2 = curr_pos.col(elements.col(e)(2));
-        const Matrix3x2r F = curr_pos(Eigen::all, elements.col(e)) * D_inv[e];
-        real element_area = 0.5f * (v1 - v0).cross(v2 - v0).norm();
-        energy += element_area * ComputeEnergyDensity(F);
-    }
-    return energy;
+    real energy = 0.0f;
+    energy = oneapi::tbb::parallel_deterministic_reduce(
+        oneapi::tbb::blocked_range<integer>(0, element_num), 0.0,
+        [&](oneapi::tbb::blocked_range<integer> r, real local) {
+            for (integer e = r.begin(); e < r.end(); e++) {
+                const Vector3r v0 = curr_pos.col(elements(0, e));
+                const Vector3r v1 = curr_pos.col(elements(1, e));
+                const Vector3r v2 = curr_pos.col(elements(2, e));
+                const Matrix3x2r F = curr_pos(Eigen::all, elements.col(e)) * D_inv[e];
+                real element_area = 0.5f * (v1 - v0).cross(v2 - v0).norm();
+                local += element_area * ComputeEnergyDensity(F);
+            }
+            return local;
+        },
+        [](real x, real y) {
+            return x + y;
+        });
+
+        return energy;
 }
 
 inline const Matrix3x2r NaiveStvK::ComputeStressTensor(const Matrix3x2r &F) const {
@@ -114,7 +120,6 @@ inline const Matrix3Xr NaiveStvK::ComputeStretchingForce(
 
     integer vertex_num = static_cast<integer>(curr_pos.cols());
     Matrix3Xr gradient = Matrix3Xr::Zero(3, vertex_num);
-    // TO DO: parallel
     for (integer v = 0; v < vertex_num; v++) {
         for (const auto &tuple : gradient_map[v]) {
             const integer e = tuple[0];
@@ -194,7 +199,6 @@ inline const SparseMatrixXr NaiveStvK::ComputeStretchingHessian(
 
     SparseMatrixXr ret(hessian_prev);
     integer hessian_nonzero_num = static_cast<integer>(hessian_map.size());
-    // TO DO: parallel
     for (integer v = 0; v < hessian_nonzero_num; v++) {
         real val = 0;
         for (const auto &arr : hessian_map[v]) {

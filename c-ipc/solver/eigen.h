@@ -31,6 +31,7 @@ using Matrix6Xr = Eigen::Matrix<real, 6, Eigen::Dynamic>;
 using MatrixX6r = Eigen::Matrix<real, Eigen::Dynamic, 6>;
 
 using Matrix3x2r = Eigen::Matrix<real, 3, 2>;
+using Matrix3x4r = Eigen::Matrix<real, 3, 4>;
 
 using SparseMatrixXr = Eigen::SparseMatrix<real>;
 
