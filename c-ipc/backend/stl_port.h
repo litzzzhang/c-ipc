@@ -2,6 +2,8 @@
 
 // commonly used stl 
 #include <algorithm>
+#include <cassert>
+#include <cfenv>
 #include <cmath>
 #include <cstdint>
 #include <ctime>

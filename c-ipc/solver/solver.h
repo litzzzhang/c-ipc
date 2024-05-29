@@ -4,3 +4,4 @@
 #include "c-ipc/solver/naive_stvk_model.h"
 #include "c-ipc/solver/dihedral_bending.h"
 #include "c-ipc/solver/fem.h"
+#include "c-ipc/solver/ccd.h"

@@ -7,6 +7,13 @@
 - strain limiting
 - material more than naive stvk
 - add dirichlet boudnary condition to test module
+- project per element H_elastic to SPD: Robust quasistatic finite elements and flesh simulation
 
 ## c-ipc part:
 - line search
+
+### build constrained set C
+
+- collision mesh <- rest position, indices, edge_indices(no specific order but unique)
+
+### ACCD based on C
