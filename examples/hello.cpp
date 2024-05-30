@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     vertex_ids = {1,1,1};
 
     std::cout << a.cwiseMin(b).cwiseEqual(a).all() << '\n';
-    std::cout << a.cwiseMin(b).cwiseEqual(a).sum()<< '\n';
+    std::cout << b.setConstant(1.0)<< '\n';
 
     return 0;
 }

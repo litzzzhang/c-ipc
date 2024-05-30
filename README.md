@@ -1,5 +1,7 @@
 # Codimensional Incremental Potential Contact with Cloth
 
+# Most Important Functionality
+- calculate Matrix2Xi edges from Matrix3Xi faces
 
 ## cloth part:
 - modify bending and energy model with nonzero rest dihedral angle
@@ -17,3 +19,8 @@
 - collision mesh <- rest position, indices, edge_indices(no specific order but unique)
 
 ### ACCD based on C
+
+## test part:
+- use <cfenv> to fix float rounding issue
+- or import to matlab
+- or refer to c-ipc toolkit

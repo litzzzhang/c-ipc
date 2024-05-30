@@ -3,6 +3,7 @@ set_xmakever("2.8.5")
 
 add_rules("mode.debug", "mode.release")
 set_languages("c++20")
+set_fpmodels("precise")
 
 add_requires("spdlog", {configs = {std_format = true}})
 add_requires("eigen")
@@ -27,6 +28,7 @@ end
 
 target("c-ipc")
     set_kind("headeronly")
+    set_fpmodels("precise")
     add_includedirs(".", {public = true})
     add_headerfiles("(c-ipc/**.h)")
     add_packages("spdlog", "eigen", "onetbb", {public = true})

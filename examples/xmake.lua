@@ -11,3 +11,6 @@ target("naive_cloth")
     add_deps("c-ipc", "tinyobj")
     add_files("naive_cloth.cpp")
 
+target("broad")
+    add_deps("c-ipc", "tinyobj")
+    add_files("broad_phase.cpp")

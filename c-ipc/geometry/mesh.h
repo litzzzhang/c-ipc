@@ -8,6 +8,7 @@ class Mesh {
   public:
     Matrix3Xr vertices, vert_normals, face_normals;
     Matrix3Xi indices;
+    Matrix2Xi edges;
     bool face_normal_valid = false, vertex_normal_valid = false;
 
     Mesh() = default;

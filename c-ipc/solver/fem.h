@@ -1,7 +1,8 @@
 #pragma once
 
-#include "c-ipc/solver/eigen.h"
-#include "c-ipc/solver/dihedral_bending.h"
+#include <c-ipc/solver/eigen.h>
+#include <c-ipc/solver/dihedral_bending.h>
+#include <c-ipc/geometry/constrain_set.h>
 
 namespace cipc {
 

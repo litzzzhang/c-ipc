@@ -26,7 +26,7 @@ int main() {
 
     clothmesh.vertices *= 2.0;
     
-    Simulator<NaiveStvK> sim(clothmesh, 0.1f, 0.5f, 1.0f);
+    Simulator<NaiveStvK> sim(clothmesh, 0.1f, 0.1f, 1.0f);
 
     Matrix3Xr curr_pos = sim.get_position();
     Matrix3Xr gravity(curr_pos), dirichlet(curr_pos);
@@ -37,8 +37,9 @@ int main() {
         curr_pos(2, i) = 2.0f;
         gravity(2, i) = -9.8f;
     }
-    // fix a point
-    dirichlet.col(vertex_num - 1) = curr_pos.col(vertex_num - 1);
+    // fix some points
+    dirichlet.col(0) = curr_pos.col(0);
+    dirichlet.col(15) = curr_pos.col(15);
     sim.set_position(curr_pos);
     sim.set_external_acceleration(gravity);
     sim.set_dirichlet_boundary(dirichlet);
