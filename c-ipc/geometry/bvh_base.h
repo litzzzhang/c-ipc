@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include "c-ipc/geometry/mortan.h"
-#include "c-ipc/solver/eigen.h"
+#include <c-ipc/geometry/mortan.h>
+#include <c-ipc/solver/eigen.h>
 
 namespace cipc {
 

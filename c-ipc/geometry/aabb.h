@@ -5,7 +5,7 @@
 #  pragma STDC FENV_ACCESS ON
 #endif
 
-#include "c-ipc/solver/eigen.h"
+#include <c-ipc/solver/eigen.h>
 
 namespace cipc {
 class AABB {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "c-ipc/solver/eigen.h"
+#include <c-ipc/solver/eigen.h>
 
 namespace cipc {
 

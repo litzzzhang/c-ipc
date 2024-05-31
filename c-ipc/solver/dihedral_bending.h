@@ -1,8 +1,8 @@
 #pragma once
 
-#include "c-ipc/solver/eigen.h"
-#include "c-ipc/geometry/mesh.h"
-#include "c-ipc/backend/parallel.h"
+#include <c-ipc/solver/eigen.h>
+#include <c-ipc/geometry/mesh.h>
+#include <c-ipc/backend/parallel.h>
 
 namespace cipc {
 

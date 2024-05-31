@@ -1,7 +1,7 @@
 #pragma once
 
-#include "c-ipc/solver/eigen.h"
-#include "c-ipc/backend/stl_port.h"
+#include <c-ipc/solver/eigen.h>
+#include <c-ipc/backend/stl_port.h>
 
 namespace cipc {
 

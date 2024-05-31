@@ -7,7 +7,7 @@
 - modify bending and energy model with nonzero rest dihedral angle
   - triangle_edge_info use this assumption
 - strain limiting
-- material more than naive stvk
+- material more than naive stvk: https://github.com/evouga/libshell
 - add dirichlet boudnary condition to test module
 - project per element H_elastic to SPD: Robust quasistatic finite elements and flesh simulation
 

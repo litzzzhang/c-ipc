@@ -1,8 +1,8 @@
 #pragma once
 
 /* constitutive model from class homework3 */
-#include "c-ipc/solver/eigen.h"
-#include "c-ipc/backend/backend.h"
+#include <c-ipc/solver/eigen.h>
+#include <c-ipc/backend/backend.h>
 
 namespace cipc {
 class NaiveStvK {
