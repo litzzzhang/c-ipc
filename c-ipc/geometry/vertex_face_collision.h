@@ -2,6 +2,7 @@
 
 #include <c-ipc/geometry/primative_collision_base.h>
 #include <c-ipc/geometry/distance.h>
+#include <c-ipc/geometry/accd.h>
 
 namespace cipc {
 class VertexFaceCollision : public PrimativeCollision {
@@ -21,6 +22,16 @@ class VertexFaceCollision : public PrimativeCollision {
     }
     // Matrix3x4r distance_grad(const Matrix3x4r &position) const override;
     // Matrix12r distance_hess(const Matrix3x4r &position) const override;
+
+    double compute_accd_timestep(
+        const Matrix3x4r &pos0, const Matrix3x4r &pos1, const double thickness,
+        const double t_ccd_fullstep) const override {
+        double t_ccd_addictive = 0.0;
+        if (!vertex_face_accd(pos0, pos1, thickness, t_ccd_fullstep, t_ccd_addictive, 0.9)) {
+            return t_ccd_fullstep;
+        }
+        return t_ccd_addictive;
+    }
 
     // TO DO: sorting???
 };

@@ -2,14 +2,14 @@
 
 #include <c-ipc/geometry/primative_collision_base.h>
 #include <c-ipc/geometry/distance.h>
+#include <c-ipc/geometry/accd.h>
+
 namespace cipc {
 class EdgeEdgeCollision : public PrimativeCollision {
   public:
     integer edge0_idx, edge1_idx;
 
-    EdgeEdgeCollision(integer e0_idx, integer e1_idx) : edge0_idx(e0_idx), edge1_idx(e1_idx) {
-    }
-
+    EdgeEdgeCollision(integer e0_idx, integer e1_idx) : edge0_idx(e0_idx), edge1_idx(e1_idx) {}
 
     Vector4i vertices_idx(const Matrix2Xi &edges, const Matrix3Xi &faces) const {
         return Vector4i(
@@ -18,7 +18,18 @@ class EdgeEdgeCollision : public PrimativeCollision {
 
     real distance(const Matrix3x4r &position) const override {
         return edge_edge_distance(
-            position.col(0), position.col(1), position.col(2), position.col(3), EdgeEdgeDistType::AUTO);
+            position.col(0), position.col(1), position.col(2), position.col(3),
+            EdgeEdgeDistType::AUTO);
+    }
+
+    double compute_accd_timestep(
+        const Matrix3x4r &pos0, const Matrix3x4r &pos1, const double thickness,
+        const double t_ccd_fullstep) const override {
+        double t_ccd_addictive = 0.0;
+        if (!edge_edge_accd(pos0, pos1, thickness, t_ccd_fullstep, t_ccd_addictive, 0.9)) {
+            return t_ccd_fullstep;
+        }
+        return t_ccd_addictive;
     }
 };
 } // namespace cipc
