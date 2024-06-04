@@ -24,25 +24,24 @@ int main() {
     std::string filepath = std::format("{}/{}", objfiles_dir, obj_file);
     load_obj(filepath, clothmesh);
 
-    Matrix2Xi edges = Matrix2Xi::Zero(2, 5);
 
-    edges.col(0) = Vector2i(0, 3);
-    edges.col(1) = Vector2i(0, 1);
-    edges.col(2) = Vector2i(1, 3);
-    edges.col(3) = Vector2i(2, 3);
-    edges.col(4) = Vector2i(1, 2);
+    clothmesh.vertices.row(1) *= 0.1;
+
+    ConstrainSet c;
+    double t = c.compute_accd_timestep(clothmesh.rest_vertices, clothmesh.vertices, clothmesh.edges, clothmesh.indices, 1e-3);
 
     double dhat = 1e-3;
     double dmin = 1e-4;
 
     BarrierPotential B;
-    B.build(clothmesh.vertices, clothmesh.rest_vertices, edges, clothmesh.indices, dhat, dmin);
-    double energy = B.ComputeBarrierPotential(clothmesh.vertices, edges, clothmesh.indices, dmin);
+    B.build(clothmesh.vertices, clothmesh.rest_vertices, clothmesh.edges, clothmesh.indices, dhat, dmin);
+    double energy = B.ComputeBarrierPotential(clothmesh.vertices, clothmesh.edges, clothmesh.indices, dmin);
     Matrix3Xr gradient =
-        B.ComputeBarrierGradient(clothmesh.vertices, edges, clothmesh.indices, dmin);
+        B.ComputeBarrierGradient(clothmesh.vertices, clothmesh.edges, clothmesh.indices, dmin);
     SparseMatrixXr hessian =
-        B.ComputeBarrierHessian(clothmesh.vertices, edges, clothmesh.indices, dmin);
+        B.ComputeBarrierHessian(clothmesh.vertices, clothmesh.edges, clothmesh.indices, dmin);
 
+    std::cout << gradient;
     spdlog::info("Frame 0, {:.2f}s elapsed", sw);
 
     return 0;

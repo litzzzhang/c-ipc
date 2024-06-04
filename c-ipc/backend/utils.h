@@ -104,4 +104,18 @@ bool hessian_checker(TestModel model, const Matrix3Xr &x, RandomEngine &rng) {
     }
     return false;
 };
+
+inline Matrix9r project_to_spd(const Matrix9r &m) {
+    Eigen::SelfAdjointEigenSolver<Matrix9r> eigen_solver(m);
+    const VectorXr &la = eigen_solver.eigenvalues();
+    const MatrixXr &V = eigen_solver.eigenvectors();
+    return V * la.cwiseMax(Eigen::Matrix<double, 9, 1>::Zero()).asDiagonal() * V.transpose();
+}
+
+inline Matrix12r project_to_spd(const Matrix12r &m){
+    Eigen::SelfAdjointEigenSolver<Matrix12r> eigen_solver(m);
+    const VectorXr &la = eigen_solver.eigenvalues();
+    const MatrixXr &V = eigen_solver.eigenvectors();
+    return V * la.cwiseMax(Eigen::Matrix<double, 12, 1>::Zero()).asDiagonal() * V.transpose();
+}
 } // namespace cipc

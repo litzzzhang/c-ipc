@@ -72,6 +72,9 @@ inline void BroadPhaseBVH::build(
     AABB::build_vertex_boxes(x0, x1, vertex_boxes, inflation_radius);
     AABB::build_edge_boxes(vertex_boxes, edges, edge_boxes);
     AABB::build_face_boxes(vertex_boxes, faces, face_boxes);
+    init_bvh(vertex_boxes, vertex_bvh);
+    init_bvh(edge_boxes, edge_bvh);
+    init_bvh(face_boxes, face_bvh);
 }
 
 inline void

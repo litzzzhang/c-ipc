@@ -16,6 +16,7 @@ option("c-ipc_tests", {default = true, description = "Build tests."})
 if is_plat("windows") then
     add_defines("_CRT_SECURE_NO_WARNINGS")
     add_cxflags("/EHsc")
+    add_cxflags("/bigobj")
     add_cxflags("/Zc:preprocessor")
     add_cuflags("-Xcompiler /Zc:preprocessor")
 end

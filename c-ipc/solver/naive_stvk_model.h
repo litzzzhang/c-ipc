@@ -195,6 +195,7 @@ inline const SparseMatrixXr NaiveStvK::ComputeStretchingHessian(
                 }
             }
         }
+        hess_nonzeros[e] = project_to_spd(hess_nonzeros[e]);
     });
 
     SparseMatrixXr ret(hessian_prev);

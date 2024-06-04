@@ -2,6 +2,7 @@
 
 #include <c-ipc/solver/eigen.h>
 #include <c-ipc/geometry/mesh.h>
+#include <c-ipc/backend/utils.h>
 #include <c-ipc/backend/parallel.h>
 
 namespace cipc {
@@ -294,6 +295,7 @@ inline const SparseMatrixXr DihedralBending::ComputeBendingHessian(
             diff_expand.block(6, 0, 3, 9) = d_othernormal_dx;
             hess_per_element[e] += coeff2 * d_normal_dx.transpose() * ddtheta_d2n * diff_expand;
         }
+        hess_per_element[e] = project_to_spd(hess_per_element[e]);
     });
     for (int e = 0; e < element_num; e++) {
         const Matrix9r &hess = hess_per_element[e];

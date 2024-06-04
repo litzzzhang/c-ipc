@@ -45,6 +45,7 @@ inline void load_obj(const std::string filepath, Mesh &mesh) {
         Vector3i indice(ix, iy, iz);
         mesh.indices.col(i) = indice;
     }
+    mesh.ComputeEdgeIndex();
 }
 
 inline void write_obj(const std::string filepath, const Mesh &mesh) {
