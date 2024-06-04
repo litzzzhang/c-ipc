@@ -5,14 +5,11 @@ using namespace cipc;
 
 int main(int argc, char **argv) {
 
-    Vector3r a(1.0, 2.0, -1.0);
-    Vector3r b(2.0, 3.0, 1.0);
-    std::array<long, 3> vertex_ids;
-    
-    vertex_ids = {1,1,1};
+    Matrix3x4r test = Matrix3x4r::Zero();
 
-    std::cout << a.cwiseMin(b).cwiseEqual(a).all() << '\n';
-    std::cout << b.setConstant(1.0)<< '\n';
+    test(Eigen::all, Vector3i(0,2,3)) = Matrix3r::Identity();
+
+    std::cout <<test;
 
     return 0;
 }

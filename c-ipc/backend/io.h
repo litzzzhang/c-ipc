@@ -35,6 +35,7 @@ inline void load_obj(const std::string filepath, Mesh &mesh) {
         Vector3r vertex(vx, vy, vz);
         mesh.vertices.col(i) = vertex;
     }
+    mesh.rest_vertices = mesh.vertices;
 
     // loop over all indices
     for (integer i = 0; i < elem_num; i++) {

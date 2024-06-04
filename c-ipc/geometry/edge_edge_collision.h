@@ -8,12 +8,18 @@ namespace cipc {
 class EdgeEdgeCollision : public PrimativeCollision {
   public:
     integer edge0_idx, edge1_idx;
+    double eps = 0.0;
 
     EdgeEdgeCollision(integer e0_idx, integer e1_idx) : edge0_idx(e0_idx), edge1_idx(e1_idx) {}
 
     Vector4i vertices_idx(const Matrix2Xi &edges, const Matrix3Xi &faces) const {
         return Vector4i(
             edges(0, edge0_idx), edges(1, edge0_idx), edges(0, edge1_idx), edges(1, edge1_idx));
+    }
+
+    Matrix3x4r vertices(
+        const Matrix3Xr &vertices, const Matrix2Xi &edges, const Matrix3Xi &faces) const override {
+        return vertices(Eigen::all, vertices_idx(edges, faces));
     }
 
     real distance(const Matrix3x4r &position) const override {

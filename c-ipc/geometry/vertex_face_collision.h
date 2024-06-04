@@ -15,6 +15,11 @@ class VertexFaceCollision : public PrimativeCollision {
         return Vector4i(vertex_idx, faces(0, face_idx), faces(1, face_idx), faces(2, face_idx));
     }
 
+    Matrix3x4r vertices(
+        const Matrix3Xr &vertices, const Matrix2Xi &edges, const Matrix3Xi &faces) const override {
+        return vertices(Eigen::all, vertices_idx(edges, faces));
+    }
+
     real distance(const Matrix3x4r &position) const override {
         return point_triangle_distance(
             position.col(0), position.col(1), position.col(2), position.col(3),
@@ -31,7 +36,7 @@ class VertexFaceCollision : public PrimativeCollision {
             PointTriangleDistType::AUTO);
     }
 
-    bool is_mollified() const override{ return false; }
+    bool is_mollified() const override { return false; }
     double mollifier(const Matrix3x4r &position, double eps) const override { return 1.0; }
 
     Matrix3x4r mollifier_grad(const Matrix3x4r &position, double eps) const override {

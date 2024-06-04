@@ -27,14 +27,21 @@ int main() {
     Matrix2Xi edges = Matrix2Xi::Zero(2, 5);
 
     edges.col(0) = Vector2i(0, 3);
-    edges.col(1) = Vector2i(0, 2);
+    edges.col(1) = Vector2i(0, 1);
     edges.col(2) = Vector2i(1, 3);
     edges.col(3) = Vector2i(2, 3);
     edges.col(4) = Vector2i(1, 2);
 
-    ConstrainSet collision_cadidates;
+    double dhat = 1e-3;
+    double dmin = 1e-4;
 
-    collision_cadidates.build(clothmesh.vertices, edges, clothmesh.indices, 1e-3);
+    BarrierPotential B;
+    B.build(clothmesh.vertices, clothmesh.rest_vertices, edges, clothmesh.indices, dhat, dmin);
+    double energy = B.ComputeBarrierPotential(clothmesh.vertices, edges, clothmesh.indices, dmin);
+    Matrix3Xr gradient =
+        B.ComputeBarrierGradient(clothmesh.vertices, edges, clothmesh.indices, dmin);
+    SparseMatrixXr hessian =
+        B.ComputeBarrierHessian(clothmesh.vertices, edges, clothmesh.indices, dmin);
 
     spdlog::info("Frame 0, {:.2f}s elapsed", sw);
 

@@ -19,6 +19,9 @@ class ConstrainSet {
     double compute_accd_timestep(
         const Matrix3Xr &vertices0, const Matrix3Xr &vertices1, const Matrix2Xi &edges,
         const Matrix3Xi &faces, const double min_distance);
+
+    void remove_adjacent_edge_edge(const Matrix2Xi &edges);
+    void remove_adjacent_vertex_face(const Matrix3Xi &faces);
     void clear();
     bool isempty() const;
     size_t size() const;
@@ -37,6 +40,8 @@ inline void ConstrainSet::build(
     board_phase->build(vertices, edges, faces, inflation_raduis);
     board_phase->detect_edge_edge_collision(edge_edge_set);
     board_phase->detect_vertex_face_collision(vertex_face_set);
+    remove_adjacent_edge_edge(edges);
+    remove_adjacent_vertex_face(faces);
 }
 
 inline void ConstrainSet::build(
@@ -47,6 +52,8 @@ inline void ConstrainSet::build(
     board_phase->build(vertices0, vertices1, edges, faces, inflation_raduis);
     board_phase->detect_edge_edge_collision(edge_edge_set);
     board_phase->detect_vertex_face_collision(vertex_face_set);
+    remove_adjacent_edge_edge(edges);
+    remove_adjacent_vertex_face(faces);
 }
 
 inline double ConstrainSet::compute_accd_timestep(
@@ -66,6 +73,35 @@ inline double ConstrainSet::compute_accd_timestep(
             collision.compute_accd_timestep(pos0, pos1, min_distance, time_of_impact));
     }
     return time_of_impact;
+}
+
+inline void ConstrainSet::remove_adjacent_edge_edge(const Matrix2Xi &edges) {
+    std::vector<EdgeEdgeCollision> valid_edge_edge_set;
+    for (integer i = 0; i < edge_edge_set.size(); i++) {
+        EdgeEdgeCollision collision = edge_edge_set[i];
+        Vector2i edge0_vertex_idx = edges.col(collision.edge0_idx);
+        Vector2i edge1_vertex_idx = edges.col(collision.edge1_idx);
+        integer i0 = edge0_vertex_idx(0), i1 = edge0_vertex_idx(1), i2 = edge1_vertex_idx(0),
+                i3 = edge1_vertex_idx(1);
+        if (i0 != i2 && i0 != i3 && i1 != i2 && i1 != i3) {
+            valid_edge_edge_set.push_back(collision);
+        }
+    }
+    edge_edge_set = valid_edge_edge_set;
+}
+
+inline void ConstrainSet::remove_adjacent_vertex_face(const Matrix3Xi &faces) {
+    std::vector<VertexFaceCollision> valid_vertex_face_set;
+    for (integer i = 0; i < vertex_face_set.size(); i++) {
+        VertexFaceCollision collision = vertex_face_set[i];
+        integer v = collision.vertex_idx; 
+        Vector3i face_idx = faces.col(collision.face_idx);
+        integer t0 = face_idx(0), t1 = face_idx(1), t2 = face_idx(2);
+        if (v != t0 && v != t1 && v != t2) {
+            valid_vertex_face_set.push_back(collision);
+        }
+    }
+    vertex_face_set = valid_vertex_face_set;
 }
 
 inline void ConstrainSet::clear() {

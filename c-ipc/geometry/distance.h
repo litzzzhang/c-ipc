@@ -487,13 +487,13 @@ static Matrix3x4r point_triangle_distance_gradient(
     case PointTriangleDistType::P_T1: {
         Matrix3x2r local_grad = point_point_distance_gradient(p, t1);
         gradient.col(0) = local_grad.col(0);
-        gradient.col(2) = local_grad.col(2);
+        gradient.col(2) = local_grad.col(1);
         break;
     }
     case PointTriangleDistType::P_T2: {
         Matrix3x2r local_grad = point_point_distance_gradient(p, t2);
         gradient.col(0) = local_grad.col(0);
-        gradient.col(3) = local_grad.col(3);
+        gradient.col(3) = local_grad.col(1);
         break;
     }
     case PointTriangleDistType::P_T0T1: {
@@ -506,14 +506,14 @@ static Matrix3x4r point_triangle_distance_gradient(
     case PointTriangleDistType::P_T1T2: {
         Matrix3r local_grad = point_line_distance_gradient(p, t1, t2);
         gradient.col(0) = local_grad.col(0);
-        gradient.col(2) = local_grad.col(2);
-        gradient.col(3) = local_grad.col(3);
+        gradient.col(2) = local_grad.col(1);
+        gradient.col(3) = local_grad.col(2);
         break;
     }
     case PointTriangleDistType::P_T2T0: {
         Matrix3r local_grad = point_line_distance_gradient(p, t2, t0);
         gradient.col(0) = local_grad.col(0);
-        gradient.col(1) = local_grad.col(3); // t0
+        gradient.col(1) = local_grad.col(2); // t0
         gradient.col(3) = local_grad.col(1); // t2
         break;
     }

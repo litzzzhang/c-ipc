@@ -6,7 +6,7 @@ namespace cipc {
 
 class Mesh {
   public:
-    Matrix3Xr vertices, vert_normals, face_normals;
+    Matrix3Xr vertices, rest_vertices, vert_normals, face_normals;
     Matrix3Xi indices;
     Matrix2Xi edges;
     bool face_normal_valid = false, vertex_normal_valid = false;
@@ -14,6 +14,7 @@ class Mesh {
     Mesh() = default;
 
     Mesh(Matrix3Xr vertices_, Matrix3Xi indices_) : vertices(vertices_), indices(indices_) {
+        rest_vertices = vertices;
         vert_normals = vertices;
         face_normals = vertices;
         vert_normals.setZero();
@@ -23,6 +24,7 @@ class Mesh {
 
     inline void clear() {
         vertices.setZero();
+        rest_vertices.setZero();
         vert_normals.setZero();
         face_normals.setZero();
         indices.setZero();
