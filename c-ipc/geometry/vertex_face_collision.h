@@ -20,8 +20,27 @@ class VertexFaceCollision : public PrimativeCollision {
             position.col(0), position.col(1), position.col(2), position.col(3),
             PointTriangleDistType::AUTO);
     }
-    // Matrix3x4r distance_grad(const Matrix3x4r &position) const override;
-    // Matrix12r distance_hess(const Matrix3x4r &position) const override;
+    Matrix3x4r distance_grad(const Matrix3x4r &position) const override {
+        return point_triangle_distance_gradient(
+            position.col(0), position.col(1), position.col(2), position.col(3),
+            PointTriangleDistType::AUTO);
+    }
+    Matrix12r distance_hess(const Matrix3x4r &position) const override {
+        return point_triangle_distance_hessian(
+            position.col(0), position.col(1), position.col(2), position.col(3),
+            PointTriangleDistType::AUTO);
+    }
+
+    bool is_mollified() const override{ return false; }
+    double mollifier(const Matrix3x4r &position, double eps) const override { return 1.0; }
+
+    Matrix3x4r mollifier_grad(const Matrix3x4r &position, double eps) const override {
+        return Matrix3x4r::Zero();
+    }
+
+    Matrix12r mollifier_hess(const Matrix3x4r &position, double eps) const override {
+        return Matrix12r::Zero();
+    }
 
     double compute_accd_timestep(
         const Matrix3x4r &pos0, const Matrix3x4r &pos1, const double thickness,
