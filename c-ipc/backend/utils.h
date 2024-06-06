@@ -18,6 +18,43 @@ static bool floatnum_nearly_equal(real a, real b, real epsilon) {
     }
 }
 
+struct gradient_diff_result {
+    double numeric_diff;
+    double analytic_diff;
+};
+
+template <typename RandomEngine>
+static gradient_diff_result finite_gradient(
+    const Matrix3Xr &x, RandomEngine &rng, std::function<double(const Matrix3Xr &)> f,
+    const Matrix3Xr &grad, double eps = 1e-11) {
+    integer vertex_num = static_cast<integer>(x.cols());
+    integer dim = 3 * vertex_num;
+    double energy = f(x);
+    VectorXr test_dir = VectorXr::Zero(dim);
+    static std::uniform_real_distribution<real> unit_random(0.0, 1.0);
+    oneapi::tbb::parallel_for(0, dim, [&](integer i) {
+        test_dir(i) = unit_random(rng);
+    });
+
+    while (test_dir.squaredNorm() < 1e-8) {
+        oneapi::tbb::parallel_for(0, dim, [&](integer i) {
+            test_dir(i) = unit_random(rng);
+        });
+    }
+
+    gradient_diff_result result;
+    Matrix3Xr x_plus = x + eps * test_dir.reshaped(3, vertex_num);
+    Matrix3Xr x_minus = x - eps * test_dir.reshaped(3, vertex_num);
+    double energy_plus = f(x_plus);
+    double energy_minus = f(x_minus);
+    result.numeric_diff = (energy_plus - energy_minus) / (2 * eps);
+    result.analytic_diff = test_dir.dot(grad.reshaped());
+
+    // result.numeric_diff_minus = (energy - energy_minus) / eps;
+    // result.analytic_diff_minus = test_dir.dot(grad.reshaped());
+    return result;
+}
+
 template <typename TestModel, typename RandomEngine>
 bool gradient_checker(TestModel model, const Matrix3Xr &x, RandomEngine &rng) {
     integer vertex_num = static_cast<integer>(x.cols());
@@ -32,7 +69,7 @@ bool gradient_checker(TestModel model, const Matrix3Xr &x, RandomEngine &rng) {
         test_dir(i) = unit_random(rng);
     });
 
-    while (test_dir.norm() < 1e-6) {
+    while (test_dir.squaredNorm() < 1e-6) {
         oneapi::tbb::parallel_for(0, dim, [&](integer i) {
             test_dir(i) = unit_random(rng);
         });
@@ -45,14 +82,20 @@ bool gradient_checker(TestModel model, const Matrix3Xr &x, RandomEngine &rng) {
         real energy_plus = model.energy(x_plus);
         real numeric_diff_plus = (energy_plus - energy) / eps;
         real analytic_diff_plus = test_dir.dot(gradient.reshaped());
-        if (floatnum_nearly_equal(numeric_diff_plus, analytic_diff_plus, 1e-2)) { return true; }
+        if (floatnum_nearly_equal(numeric_diff_plus, analytic_diff_plus, 1e-3)) {
+            printf("%d\n", i);
+            return true;
+        }
 
         Matrix3Xr x_minus = x - eps * test_dir.reshaped(3, vertex_num);
         real energy_minus = model.energy(x_minus);
         real numeric_diff_minus = (energy - energy_minus) / eps;
         real analytic_diff_minus = test_dir.dot(gradient.reshaped());
 
-        if (floatnum_nearly_equal(numeric_diff_minus, analytic_diff_minus, 1e-2)) { return true; }
+        if (floatnum_nearly_equal(numeric_diff_minus, analytic_diff_minus, 1e-3)) {
+            printf("%d\n", i);
+            return true;
+        }
         printf("[plus]: analy: %f, numeric: %f\n", analytic_diff_plus, numeric_diff_plus);
     }
     return false;
@@ -112,7 +155,7 @@ inline Matrix9r project_to_spd(const Matrix9r &m) {
     return V * la.cwiseMax(Eigen::Matrix<double, 9, 1>::Zero()).asDiagonal() * V.transpose();
 }
 
-inline Matrix12r project_to_spd(const Matrix12r &m){
+inline Matrix12r project_to_spd(const Matrix12r &m) {
     Eigen::SelfAdjointEigenSolver<Matrix12r> eigen_solver(m);
     const VectorXr &la = eigen_solver.eigenvalues();
     const MatrixXr &V = eigen_solver.eigenvectors();

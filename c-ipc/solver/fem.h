@@ -22,26 +22,31 @@ class Simulator {
     // Stretching and shearing
     const real ComputeStretchingAndShearingEnergy(const Matrix3Xr &position) const {
         return material_.ComputeStretchingEnergy(position, current_mesh_.indices, D_inv_);
+        // return material_.ComputeStretchingEnergy(current_mesh_, thickness_);
     };
     const Matrix3Xr ComputeStretchingAndShearingForce(const Matrix3Xr &position) const {
         return material_.ComputeStretchingForce(
-            position, current_mesh_.indices, D_inv_, stretching_and_shearing_gradient_map_);
+        position, current_mesh_.indices, D_inv_, stretching_and_shearing_gradient_map_);
+        // return material_.ComputeStretchingForce(
+            // current_mesh_, thickness_, stretching_and_shearing_gradient_map_);
     };
     const SparseMatrixXr ComputeStretchingAndShearingHessian(const Matrix3Xr &position) const {
         return material_.ComputeStretchingHessian(
-            position, current_mesh_.indices, D_inv_, stretching_and_shearing_hessian_nonzero_map_,
-            stretching_and_shearing_hessian_);
+        position, current_mesh_.indices, D_inv_, stretching_and_shearing_hessian_nonzero_map_,
+        stretching_and_shearing_hessian_);
+        // return material_.ComputeStretchingHessian(
+            // current_mesh_, thickness_, stretching_and_shearing_hessian_nonzero_map_, stretching_and_shearing_hessian_);
     };
 
     // bending
     const real ComputeBendingEnergy(const Matrix3Xr &position) const {
-        return bending_model_.ComputeBendingEnergy(current_mesh_, triangle_edge_info_, rest_area_);
+        return bending_model_.ComputeBendingEnergy(position, current_mesh_.indices, triangle_edge_info_, rest_area_);
     };
     const Matrix3Xr ComputeBendingForce(const Matrix3Xr &position) const {
-        return bending_model_.ComputeBendingForce(current_mesh_, triangle_edge_info_, rest_area_);
+        return bending_model_.ComputeBendingForce(position, current_mesh_.indices, triangle_edge_info_, rest_area_);
     };
     const SparseMatrixXr ComputeBendingHessian(const Matrix3Xr &position) const {
-        return bending_model_.ComputeBendingHessian(current_mesh_, triangle_edge_info_, rest_area_);
+        return bending_model_.ComputeBendingHessian(position, current_mesh_.indices, triangle_edge_info_, rest_area_);
     };
 
     MaterialType material_;
@@ -216,15 +221,17 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
 
     // calculate degree of freedom
     Matrix3Xr free_dof(3, vertex_num), dirichlet_dof(3, vertex_num), dirichlet_value(3, vertex_num);
-    free_dof.setZero(); dirichlet_dof.setZero(); dirichlet_value.setZero();
-    
+    free_dof.setZero();
+    dirichlet_dof.setZero();
+    dirichlet_value.setZero();
+
     const real inf = std::numeric_limits<real>::infinity();
-    for (integer d = 0; d < 3; d++){
-        for (integer i = 0; i < vertex_num; i++){
-            if (dirichlet_boundary_(d, i) == inf){
+    for (integer d = 0; d < 3; d++) {
+        for (integer i = 0; i < vertex_num; i++) {
+            if (dirichlet_boundary_(d, i) == inf) {
                 free_dof(d, i) = 1;
                 dirichlet_dof(d, i) = 0;
-            }else{
+            } else {
                 free_dof(d, i) = 0;
                 dirichlet_dof(d, i) = 1;
                 dirichlet_value(d, i) = dirichlet_boundary_(d, i);
@@ -247,7 +254,6 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         // return energy_kinetic + energy_ss;
         return energy_kinetic + energy_ss + energy_bending;
         // return energy_kinetic;
-        // return energy_kinetic + energy_ss;
     };
 
     // Its gradient.
@@ -265,8 +271,6 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         const Matrix3Xr total_grad = gradient_kinetic + gradient_ss + gradient_bending;
         // const Matrix3Xr total_grad = gradient_kinetic + gradient_ss;
         return total_grad.cwiseProduct(free_dof).reshaped();
-        // return (gradient_kinetic).reshaped();
-        // return (gradient_kinetic + gradient_ss).reshaped();
     };
     auto Hess_E = [&](const Matrix3Xr &x_next) -> const SparseMatrixXr {
         std::vector<Eigen::Triplet<real>> kinetic_nonzeros;
@@ -277,7 +281,8 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
                 kinetic_nonzeros.push_back(Eigen::Triplet<real>(
                     triplet.row() * 3 + d, triplet.col() * 3 + d, triplet.value() * scale));
             }
-        const SparseMatrixXr H_kinetic = FromTriplet(3 * vertex_num, 3 * vertex_num, kinetic_nonzeros);
+        const SparseMatrixXr H_kinetic =
+            FromTriplet(3 * vertex_num, 3 * vertex_num, kinetic_nonzeros);
         const SparseMatrixXr H_ss = ComputeStretchingAndShearingHessian(x_next);
         const SparseMatrixXr H_bending = ComputeBendingHessian(x_next);
         // const SparseMatrixXr H = H_kinetic + H_ss;
@@ -287,17 +292,15 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         const integer size = static_cast<integer>(H.rows());
         const std::vector<Eigen::Triplet<real>> H_nonzeros = ToTriplet(H);
         std::vector<Eigen::Triplet<real>> H_modified_nonzeros;
-        for( const auto& triplet : H_nonzeros){
+        for (const auto &triplet : H_nonzeros) {
             const integer row = triplet.row();
             const integer col = triplet.col();
             if (ddof(row) == 1 || ddof(col) == 1) continue;
             H_modified_nonzeros.push_back(triplet);
         }
 
-        for (integer i = 0; i < size; i++){
-            if (ddof(i) == 1){
-                H_modified_nonzeros.push_back({i, i, 1});
-            }
+        for (integer i = 0; i < size; i++) {
+            if (ddof(i) == 1) { H_modified_nonzeros.push_back({i, i, 1}); }
         }
         // return H_kinetic;
         // return H_kinetic + H_ss;

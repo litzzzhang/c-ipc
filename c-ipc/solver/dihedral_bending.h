@@ -159,34 +159,37 @@ class DihedralBending {
     }
 
     const real ComputeBendingEnergy(
-        const Mesh &current_mesh, const std::vector<std::array<TriangleEdgeInfo, 3>> &edge_info,
+        const Matrix3Xr &position, const Matrix3Xi &indices,
+        const std::vector<std::array<TriangleEdgeInfo, 3>> &edge_info,
         const VectorXr &rest_area) const;
 
     const Matrix3Xr ComputeBendingForce(
-        const Mesh &current_mesh, const std::vector<std::array<TriangleEdgeInfo, 3>> &edge_info,
+        const Matrix3Xr &position, const Matrix3Xi &indices,
+        const std::vector<std::array<TriangleEdgeInfo, 3>> &edge_info,
         const VectorXr &rest_area) const;
 
     const SparseMatrixXr ComputeBendingHessian(
-        const Mesh &current_mesh, const std::vector<std::array<TriangleEdgeInfo, 3>> &edge_info,
+        const Matrix3Xr &position, const Matrix3Xi &indices,
+        const std::vector<std::array<TriangleEdgeInfo, 3>> &edge_info,
         const VectorXr &rest_area) const;
 };
 
 inline const real DihedralBending::ComputeBendingEnergy(
-    const Mesh &current_mesh, const std::vector<std::array<TriangleEdgeInfo, 3>> &edge_info,
+    const Matrix3Xr &position, const Matrix3Xi &indices,
+    const std::vector<std::array<TriangleEdgeInfo, 3>> &edge_info,
     const VectorXr &rest_area) const {
 
-    const integer element_num = static_cast<integer>(current_mesh.indices.cols());
+    const integer element_num = static_cast<integer>(indices.cols());
     real energy = oneapi::tbb::parallel_deterministic_reduce(
         oneapi::tbb::blocked_range<integer>(0, element_num), 0.0,
         [&](oneapi::tbb::blocked_range<integer> r, real local) {
             for (integer e = r.begin(); e < r.end(); e++) {
-                const Vector3r normal = ComputeFaceNormal(
-                    current_mesh.vertices(Eigen::all, current_mesh.indices.col(e)));
+                const Vector3r normal = ComputeFaceNormal(position(Eigen::all, indices.col(e)));
                 for (integer i = 0; i < 3; i++) {
                     const TriangleEdgeInfo &info = edge_info[e][i];
                     if (info.other_triangle == -1) { continue; }
-                    const Vector3r other_normal = ComputeFaceNormal(current_mesh.vertices(
-                        Eigen::all, current_mesh.indices.col(info.other_triangle)));
+                    const Vector3r other_normal =
+                        ComputeFaceNormal(position(Eigen::all, indices.col(info.other_triangle)));
                     const real angle = ComputeBendingAngle(normal, other_normal);
                     const real rest_edge_length = info.edge_length;
                     local +=
@@ -202,25 +205,24 @@ inline const real DihedralBending::ComputeBendingEnergy(
 }
 
 inline const Matrix3Xr DihedralBending::ComputeBendingForce(
-    const Mesh &current_mesh, const std::vector<std::array<TriangleEdgeInfo, 3>> &edge_info,
+    const Matrix3Xr &position, const Matrix3Xi &indices,
+    const std::vector<std::array<TriangleEdgeInfo, 3>> &edge_info,
     const VectorXr &rest_area) const {
 
-    const integer vertex_num = static_cast<integer>(current_mesh.vertices.cols());
-    const integer element_num = static_cast<integer>(current_mesh.indices.cols());
+    const integer vertex_num = static_cast<integer>(position.cols());
+    const integer element_num = static_cast<integer>(indices.cols());
     Matrix3Xr gradient = Matrix3Xr::Zero(3, vertex_num);
 
     std::vector<Matrix3r> gradient_per_element;
     gradient_per_element.assign(element_num, Matrix3r::Zero());
     oneapi::tbb::parallel_for(0, element_num, [&](integer e) {
-        const Matrix3r &this_vertices =
-            current_mesh.vertices(Eigen::all, current_mesh.indices.col(e));
+        const Matrix3r &this_vertices = position(Eigen::all, indices.col(e));
         const Vector3r normal = ComputeFaceNormal(this_vertices);
         // iterate each edge
         for (integer i = 0; i < 3; i++) {
             const TriangleEdgeInfo &info = edge_info[e][i];
             if (info.other_triangle == -1) { continue; }
-            const Matrix3r &other_vertices =
-                current_mesh.vertices(Eigen::all, current_mesh.indices.col(info.other_triangle));
+            const Matrix3r &other_vertices = position(Eigen::all, indices.col(info.other_triangle));
             const Vector3r other_normal = ComputeFaceNormal(other_vertices);
             const real angle = ComputeBendingAngle(normal, other_normal);
             const real rest_edge_length = info.edge_length;
@@ -236,9 +238,9 @@ inline const Matrix3Xr DihedralBending::ComputeBendingForce(
     });
 
     for (integer e = 0; e < element_num; e++) {
-        integer idx1 = current_mesh.indices(0, e);
-        integer idx2 = current_mesh.indices(1, e);
-        integer idx3 = current_mesh.indices(2, e);
+        integer idx1 = indices(0, e);
+        integer idx2 = indices(1, e);
+        integer idx3 = indices(2, e);
         gradient.col(idx1) += gradient_per_element[e].col(0);
         gradient.col(idx2) += gradient_per_element[e].col(1);
         gradient.col(idx3) += gradient_per_element[e].col(2);
@@ -247,26 +249,24 @@ inline const Matrix3Xr DihedralBending::ComputeBendingForce(
 }
 
 inline const SparseMatrixXr DihedralBending::ComputeBendingHessian(
-    const Mesh &current_mesh, const std::vector<std::array<TriangleEdgeInfo, 3>> &edge_info,
+    const Matrix3Xr &position, const Matrix3Xi &indices,
+    const std::vector<std::array<TriangleEdgeInfo, 3>> &edge_info,
     const VectorXr &rest_area) const {
 
-    const integer hess_size = static_cast<integer>(current_mesh.vertices.cols()) * 3;
+    const integer hess_size = static_cast<integer>(position.cols()) * 3;
     SparseMatrixXr Hess(hess_size, hess_size);
     Hess.setZero();
-    const integer element_num = static_cast<integer>(current_mesh.indices.cols());
-    const Matrix3Xi &elements_ = current_mesh.indices;
-    const Matrix3Xr &position = current_mesh.vertices;
+    const integer element_num = static_cast<integer>(indices.cols());
+    const Matrix3Xi &elements_ = indices;
     std::vector<Matrix9r> hess_per_element;
     hess_per_element.assign(element_num, Matrix9r::Zero());
     oneapi::tbb::parallel_for(0, element_num, [&](integer e) {
-        const Matrix3r &this_vertices =
-            current_mesh.vertices(Eigen::all, current_mesh.indices.col(e));
+        const Matrix3r &this_vertices = position(Eigen::all, indices.col(e));
         const Vector3r normal = ComputeFaceNormal(this_vertices);
         for (integer i = 0; i < 3; ++i) {
             const TriangleEdgeInfo &info = edge_info[e][i];
             if (info.other_triangle == -1) continue;
-            const Matrix3r &other_vertices =
-                current_mesh.vertices(Eigen::all, current_mesh.indices.col(info.other_triangle));
+            const Matrix3r &other_vertices = position(Eigen::all, indices.col(info.other_triangle));
             const Vector3r other_normal = ComputeFaceNormal(other_vertices);
             const real angle = ComputeBendingAngle(normal, other_normal);
             const real rest_shape_edge_length = info.edge_length;

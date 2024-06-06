@@ -1,5 +1,9 @@
 # Codimensional Incremental Potential Contact with Cloth
 
+# Most Important Part
+
+- adaptive stiffness
+
 ## cloth part:
 - modify bending and energy model with nonzero rest dihedral angle
   - triangle_edge_info use this assumption
