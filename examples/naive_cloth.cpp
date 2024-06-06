@@ -11,9 +11,9 @@ using namespace cipc;
 
 int main() {
     spdlog::set_pattern("[%m-%d %T] %^[%l]%$ %v");
-    const std::string output_dir("./output/naive_cloth");
+    const std::string output_dir("./output/naive_cloth10");
     const std::string objfiles_dir("./obj_files");
-    const std::string obj_file("mat40x40.obj");
+    const std::string obj_file("mat10x10.obj");
     // print information
     spdlog::info("*** Naive Cloth Simulation without C-IPC **");
     if (!std::filesystem::exists(output_dir)) { std::filesystem::create_directories(output_dir); }
