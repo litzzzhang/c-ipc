@@ -49,9 +49,19 @@ class VertexFaceCollision : public PrimativeCollision {
 
     double compute_accd_timestep(
         const Matrix3x4r &pos0, const Matrix3x4r &pos1, const double thickness,
-        const double t_ccd_fullstep) const override {
+        const double t_ccd_fullstep, const integer max_iteration) const override {
         double t_ccd_addictive = 0.0;
-        if (!vertex_face_accd(pos0, pos1, thickness, t_ccd_fullstep, t_ccd_addictive, 0.9)) {
+        const Vector3r v = pos0.col(0), t0 = pos0.col(1), t1 = pos0.col(2), t2 = pos0.col(3);
+        const double init_dist =
+            point_triangle_distance(v, t0, t1, t2, PointTriangleDistType::AUTO);
+        if ((pos0 - pos1).squaredNorm() == 0.0) {
+            if (init_dist > thickness) { return t_ccd_fullstep; }
+            printf("initial distance is below dmin, toi = 0!\n");
+            return 0.0;
+        }
+
+        if (!vertex_face_accd(
+                pos0, pos1, thickness, t_ccd_fullstep, t_ccd_addictive, max_iteration, 0.9)) {
             return t_ccd_fullstep;
         }
         return t_ccd_addictive;

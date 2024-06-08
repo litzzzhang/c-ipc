@@ -187,8 +187,8 @@ static real point_edge_distance(
 
 static real point_triangle_distance_in(
     const Vector3r &p, const Vector3r &t0, const Vector3r &t1, const Vector3r &t2) {
-    Vector3r normal = (t2 - t0).cross(t1 - t0);
-    return (p - t0).dot(normal) / normal.squaredNorm();
+    const Vector3r normal = (t1 - t0).cross(t2 - t0);
+    return std::pow((p - t0).dot(normal), 2.0) / normal.squaredNorm();
 }
 
 static real point_triangle_distance(

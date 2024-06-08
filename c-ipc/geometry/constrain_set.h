@@ -6,6 +6,8 @@
 #include <c-ipc/geometry/edge_edge_collision.h>
 
 namespace cipc {
+
+const integer max_iteration = 100000;
 class ConstrainSet {
   public:
     ConstrainSet() = default;
@@ -70,7 +72,7 @@ inline double ConstrainSet::compute_accd_timestep(
         const Matrix3x4r pos1 = vertices1(Eigen::all, idx);
         time_of_impact = std::min(
             time_of_impact,
-            collision.compute_accd_timestep(pos0, pos1, min_distance, time_of_impact));
+            collision.compute_accd_timestep(pos0, pos1, min_distance, time_of_impact, max_iteration));
     }
     return time_of_impact;
 }

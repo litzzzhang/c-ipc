@@ -31,6 +31,7 @@ class BarrierPotential {
             collision.eps = 1e-3 * (edge_pos_rest.col(0) - edge_pos_rest.col(1)).squaredNorm()
                             * (edge_pos_rest.col(2) - edge_pos_rest.col(3)).squaredNorm();
             double dist = collision.distance(edge_pos);
+            cipc_assert(dist > 0, "ee collision distance should be positive");
             closest_distance = std::min(dist, closest_distance);
             if (!is_colliding(dist)) { continue; }
             edge_edge_collisions.push_back(collision);
@@ -42,6 +43,10 @@ class BarrierPotential {
             Matrix3x4r vertex_face_pos = collision.vertices(vertices, edges, faces);
 
             double dist = collision.distance(vertex_face_pos);
+            if (dist < 0.0){
+                int stop = 1;
+            }
+            cipc_assert(dist > 0, "vf collision distance should be positive");
             closest_distance = std::min(dist, closest_distance);
             if (!is_colliding(dist)) { continue; }
             vertex_face_collisions.push_back(collision);
@@ -49,6 +54,7 @@ class BarrierPotential {
         is_built = true;
     }
 
+    // static version
     void build(
         const Matrix3Xr &vertices, const Matrix3Xr &rest_vertices, const Matrix2Xi &edges,
         const Matrix3Xi &faces, const double dhat, const double dmin) {
@@ -56,6 +62,16 @@ class BarrierPotential {
         ConstrainSet c;
         c.build(vertices, edges, faces, inflation_radius);
         build(vertices, rest_vertices, edges, faces, dhat, dmin, c);
+    }
+
+    // dynamic version
+    void build(
+        const Matrix3Xr &vertices0, const Matrix3Xr &vertices1, const Matrix3Xr &rest_vertices,
+        const Matrix2Xi &edges, const Matrix3Xi &faces, const double dhat, const double dmin) {
+        double inflation_radius = (dhat + dmin) / 2;
+        ConstrainSet c;
+        c.build(vertices0, vertices1, edges, faces, inflation_radius);
+        build(vertices1, rest_vertices, edges, faces, dhat, dmin, c);
     }
     size_t size() const { return vertex_face_collisions.size() + edge_edge_collisions.size(); }
 
@@ -237,10 +253,21 @@ class BarrierPotential {
     }
 
     double accd(
-        const Matrix3Xr &vertices0, const Matrix3Xr &vertices1, const Matrix2Xi &edges,
-        const Matrix3Xi &faces, const double dmin, const double dhat) {
-        ConstrainSet c;
+        const Matrix3Xr &rest_vertices, const Matrix3Xr &vertices0, const Matrix3Xr &vertices1,
+        const Matrix2Xi &edges, const Matrix3Xi &faces, const double dmin, const double dhat) {
+
         double inflation_radius = 0.5 * (dmin + dhat);
+        // if (!is_built) { build(vertices0, vertices1, rest_vertices, edges, faces, dhat, dmin); }
+        // double time_of_impact = 1.0;
+        // for (integer i = 0; i < size(); i++) {
+        //     const PrimativeCollision &collision = (*this)[i];
+        //     const Vector4i idx = collision.vertices_idx(edges, faces);
+        //     const Matrix3x4r pos0 = vertices0(Eigen::all, idx);
+        //     const Matrix3x4r pos1 = vertices1(Eigen::all, idx);
+        //     time_of_impact = std::min(
+        //         time_of_impact, collision.compute_accd_timestep(pos0, pos1, dmin, time_of_impact));
+        // }
+        ConstrainSet c;
         c.build(vertices0, vertices1, edges, faces, inflation_radius);
         return c.compute_accd_timestep(vertices0, vertices1, edges, faces, dmin);
     }

@@ -29,6 +29,6 @@ class PrimativeCollision {
 
     virtual double compute_accd_timestep(
         const Matrix3x4r &pos0, const Matrix3x4r &pos1, const double thickness,
-        const double t_ccd_fullstep) const = 0;
+        const double t_ccd_fullstep, const integer max_iteration) const = 0;
 };
 } // namespace cipc

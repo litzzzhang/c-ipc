@@ -318,7 +318,7 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         std::cout << "barrier gradient" << '\n';
         std::cout << gradient_barrier << '\n';
         // const Matrix3Xr total_grad =
-            // gradient_kinetic + gradient_ss + gradient_bending + gradient_barrier;
+        // gradient_kinetic + gradient_ss + gradient_bending + gradient_barrier;
         const Matrix3Xr total_grad = gradient_kinetic + gradient_ss + gradient_bending;
         return total_grad.cwiseProduct(free_dof).reshaped();
     };
@@ -336,11 +336,8 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         const SparseMatrixXr H_ss = ComputeStretchingAndShearingHessian(x_next);
         const SparseMatrixXr H_bending = ComputeBendingHessian(x_next);
         const SparseMatrixXr H_barrier = kappa * ComputeBarrierHessian(x_next);
-        std::cout << "barrier hessian" << '\n';
-        std::cout << H_barrier.nonZeros();
-        // std::cout << H_barrier << '\n';
         const SparseMatrixXr H = H_kinetic + H_ss + H_bending;
-        
+
         // const SparseMatrixXr H = H_kinetic + H_ss + H_bending + H_barrier;
 
         const auto ddof = dirichlet_dof.reshaped().template cast<integer>();
@@ -364,29 +361,28 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
     Matrix3Xr xk = x0.cwiseProduct(free_dof) + dirichlet_value;
     real Ek = E(xk);
     VectorXr gk = grad_E(xk);
-    integer newton_iter = 200;
+    integer newton_iter = 3;
     double prev_min_distance = barrier_model_.closest_distance;
-    while (gk.cwiseAbs().maxCoeff() > 1e-3) {
+    while (true) {
         cipc_assert(newton_iter > 0, "Newton iteration failed");
         Eigen::SimplicialLDLT<SparseMatrixXr> direct_solver(Hess_E(xk));
         const VectorXr pk = direct_solver.solve(-gk);
         barrier_model_.is_built = false;
 
         // CCD aware line search
-        double ls_step = 1;
-        // double ls_step = std::min(
-        //     1.0, barrier_model_.accd(
-        //              xk, xk + pk.reshaped(3, vertex_num), current_mesh_.edges,
-        //              current_mesh_.indices, dmin, dhat));
-        // if (ls_step < 1.0) {
-        //     int stop = 1;
-        //     printf("collision happens at %.3f s in newton iter %d\n", ls_step, newton_iter);
-        //     std::cout << x0 << '\n';
-        //     std::cout << pk.reshaped(3, vertex_num) << '\n';
-        // }
-        real E_updated = E(xk + pk.reshaped(3, vertex_num));
+        double ls_step = std::min(
+            1.0, barrier_model_.accd(
+                     current_mesh_.rest_vertices, xk,
+                     xk + pk.reshaped(3, vertex_num).cwiseProduct(free_dof), current_mesh_.edges,
+                     current_mesh_.indices, dmin, dhat));
+        if (ls_step < 1.0) {
+            int stop = 1;
+            printf("collision happens at %.3f s in newton iter %d\n", ls_step, newton_iter);
+            std::cout << xk << '\n';
+            std::cout << xk + ls_step * pk.reshaped(3, vertex_num) << '\n';
+        }
+        real E_updated = E(xk + ls_step * pk.reshaped(3, vertex_num));
         integer ls_iter = 50;
-        // while (E_updated > Ek) {
         while (E_updated > Ek + 0.01f * ls_step * gk.dot(pk)) {
             barrier_model_.is_built = false;
             cipc_assert(ls_iter > 0, "Line search failed to find sufficient decrease");
@@ -403,7 +399,11 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         kappa = update_barrier_stiffness(
             prev_min_distance, barrier_model_.closest_distance, kappa_max, kappa, dmin);
         prev_min_distance = barrier_model_.closest_distance;
-        newton_iter -= 1;
+        newton_iter += 1;
+
+        double res = std::sqrt(pk.squaredNorm() / vertex_num) * inv_h;
+        if (res < 1e-3) { newton_iter -= 1; }
+        if (newton_iter <= 0) { break; }
     }
 
     // update pos and vel

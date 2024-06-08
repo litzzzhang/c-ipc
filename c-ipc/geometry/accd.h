@@ -12,7 +12,8 @@ template <int N>
 bool addictive_ccd(
     Matrix3x4r pos0, Matrix3x4r pos_delta, const double thickness,
     const std::function<double(const Matrix3x4r &)> &distance_function, const double t_ccd_fullstep,
-    double &t_ccd_addictive, const double conservative_rescaling = 0.9) {
+    double &t_ccd_addictive, const integer max_iteration,
+    const double conservative_rescaling = 0.9) {
     Vector3r pos_delta_average = Vector3r::Zero();
     for (integer i = 0; i < 4; i++) { pos_delta_average += pos_delta.col(i); }
     pos_delta_average *= 0.25;
@@ -45,7 +46,9 @@ bool addictive_ccd(
                            / (relative_motion_norm * (std::sqrt(dist_squrare) + thickness));
 
     Matrix3x4r pos = pos0;
+    integer iter = 0;
     while (true) {
+        iter += 1;
         for (integer i = 0; i < 4; i++) {
             pos.col(i) = pos0.col(i) + t_lower_bound * pos_delta.col(i);
         }
@@ -61,13 +64,14 @@ bool addictive_ccd(
 
         t_lower_bound = 0.9 * (dist_squrare - thickness * thickness)
                         / (relative_motion_norm * (std::sqrt(dist_squrare) + thickness));
+        if (iter > max_iteration) { return false; }
     }
     return true;
 }
 
 static bool edge_edge_accd(
     const Matrix3x4r &pos0, const Matrix3x4r &pos1, const double thickness,
-    const double t_ccd_fullstep, double &t_ccd_addictive,
+    const double t_ccd_fullstep, double &t_ccd_addictive, const integer max_iteration,
     const double conservative_rescaling = 0.9) {
     const Matrix3x4r pos_delta = pos1 - pos0;
     auto dist_function = [](const Matrix3x4r &position) {
@@ -76,13 +80,13 @@ static bool edge_edge_accd(
             EdgeEdgeDistType::AUTO);
     };
     return addictive_ccd<2>(
-        pos0, pos_delta, thickness, dist_function, t_ccd_fullstep, t_ccd_addictive,
+        pos0, pos_delta, thickness, dist_function, t_ccd_fullstep, t_ccd_addictive, max_iteration,
         conservative_rescaling);
 }
 
 static bool vertex_face_accd(
     const Matrix3x4r &pos0, const Matrix3x4r &pos1, const double thickness,
-    const double t_ccd_fullstep, double &t_ccd_addictive,
+    const double t_ccd_fullstep, double &t_ccd_addictive, const integer max_iteration,
     const double conservative_rescaling = 0.9) {
     const Matrix3x4r pos_delta = pos1 - pos0;
     auto dist_function = [](const Matrix3x4r &position) {
@@ -91,7 +95,7 @@ static bool vertex_face_accd(
             PointTriangleDistType::AUTO);
     };
     return addictive_ccd<1>(
-        pos0, pos_delta, thickness, dist_function, t_ccd_fullstep, t_ccd_addictive,
+        pos0, pos_delta, thickness, dist_function, t_ccd_fullstep, t_ccd_addictive, max_iteration,
         conservative_rescaling);
 }
 
