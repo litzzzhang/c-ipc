@@ -3,6 +3,8 @@
 #include <c-ipc/solver/eigen.h>
 #include <c-ipc/solver/dihedral_bending.h>
 #include <c-ipc/geometry/constrain_set.h>
+#include <c-ipc/solver/barrier_potential.h>
+#include <iostream>
 
 namespace cipc {
 
@@ -22,35 +24,65 @@ class Simulator {
     // Stretching and shearing
     const real ComputeStretchingAndShearingEnergy(const Matrix3Xr &position) const {
         return material_.ComputeStretchingEnergy(position, current_mesh_.indices, D_inv_);
-        // return material_.ComputeStretchingEnergy(current_mesh_, thickness_);
     };
     const Matrix3Xr ComputeStretchingAndShearingForce(const Matrix3Xr &position) const {
         return material_.ComputeStretchingForce(
-        position, current_mesh_.indices, D_inv_, stretching_and_shearing_gradient_map_);
-        // return material_.ComputeStretchingForce(
-            // current_mesh_, thickness_, stretching_and_shearing_gradient_map_);
+            position, current_mesh_.indices, D_inv_, stretching_and_shearing_gradient_map_);
     };
     const SparseMatrixXr ComputeStretchingAndShearingHessian(const Matrix3Xr &position) const {
         return material_.ComputeStretchingHessian(
-        position, current_mesh_.indices, D_inv_, stretching_and_shearing_hessian_nonzero_map_,
-        stretching_and_shearing_hessian_);
-        // return material_.ComputeStretchingHessian(
-            // current_mesh_, thickness_, stretching_and_shearing_hessian_nonzero_map_, stretching_and_shearing_hessian_);
+            position, current_mesh_.indices, D_inv_, stretching_and_shearing_hessian_nonzero_map_,
+            stretching_and_shearing_hessian_);
     };
 
     // bending
     const real ComputeBendingEnergy(const Matrix3Xr &position) const {
-        return bending_model_.ComputeBendingEnergy(position, current_mesh_.indices, triangle_edge_info_, rest_area_);
+        return bending_model_.ComputeBendingEnergy(
+            position, current_mesh_.indices, triangle_edge_info_, rest_area_);
     };
     const Matrix3Xr ComputeBendingForce(const Matrix3Xr &position) const {
-        return bending_model_.ComputeBendingForce(position, current_mesh_.indices, triangle_edge_info_, rest_area_);
+        return bending_model_.ComputeBendingForce(
+            position, current_mesh_.indices, triangle_edge_info_, rest_area_);
     };
     const SparseMatrixXr ComputeBendingHessian(const Matrix3Xr &position) const {
-        return bending_model_.ComputeBendingHessian(position, current_mesh_.indices, triangle_edge_info_, rest_area_);
+        return bending_model_.ComputeBendingHessian(
+            position, current_mesh_.indices, triangle_edge_info_, rest_area_);
     };
+
+    // collision
+    const real ComputeBarrierEnergy(const Matrix3Xr &position) {
+        if (!barrier_model_.is_built) {
+            barrier_model_.build(
+                position, current_mesh_.rest_vertices, current_mesh_.edges, current_mesh_.indices,
+                1e-3, 1e-4);
+        }
+        return barrier_model_.ComputeBarrierPotential(
+            position, current_mesh_.edges, current_mesh_.indices, 1e-4);
+    }
+
+    const Matrix3Xr ComputeBarrierForce(const Matrix3Xr &position) {
+        if (!barrier_model_.is_built) {
+            barrier_model_.build(
+                position, current_mesh_.rest_vertices, current_mesh_.edges, current_mesh_.indices,
+                1e-3, 1e-4);
+        }
+        return -barrier_model_.ComputeBarrierGradient(
+            position, current_mesh_.edges, current_mesh_.indices, 1e-4);
+    }
+
+    const SparseMatrixXr ComputeBarrierHessian(const Matrix3Xr &position) {
+        if (!barrier_model_.is_built) {
+            barrier_model_.build(
+                position, current_mesh_.rest_vertices, current_mesh_.edges, current_mesh_.indices,
+                1e-3, 1e-4);
+        }
+        return barrier_model_.ComputeBarrierHessian(
+            position, current_mesh_.edges, current_mesh_.indices, 1e-4);
+    }
 
     MaterialType material_;
     DihedralBending bending_model_;
+    BarrierPotential barrier_model_;
     // x
     Mesh current_mesh_;
     // v
@@ -239,6 +271,19 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         }
     }
 
+    // build constrain set
+    const double dmin = 1e-4, dhat = 1e-3;
+    barrier_model_.build(
+        current_mesh_.vertices, current_mesh_.rest_vertices, current_mesh_.edges,
+        current_mesh_.indices, dhat, dmin);
+    Matrix3Xr init_elastic_grad =
+        -ComputeStretchingAndShearingForce(x0) - ComputeBendingForce(x0) - a;
+    Matrix3Xr init_barrier_grad = -ComputeBarrierForce(x0);
+    double kappa, kappa_max;
+    kappa = init_barrier_stiffness(
+        dhat, dmin, kappa_max, init_elastic_grad, init_barrier_grad, int_matrix_.diagonal().mean());
+    // compute initial barrier stiffness
+
     auto E = [&](const Matrix3Xr &x_next) -> real {
         real energy_kinetic = 0;
 
@@ -251,9 +296,10 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         energy_kinetic *= half_rho_inv_h2;
         const real energy_ss = ComputeStretchingAndShearingEnergy(x_next);
         const real energy_bending = ComputeBendingEnergy(x_next);
-        // return energy_kinetic + energy_ss;
+        const real energy_barrier = kappa * ComputeBarrierEnergy(x_next);
+        std::cout << "barrier energy " << energy_barrier << '\n';
         return energy_kinetic + energy_ss + energy_bending;
-        // return energy_kinetic;
+        // return energy_kinetic + energy_ss + energy_bending + energy_barrier;
     };
 
     // Its gradient.
@@ -268,8 +314,12 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         gradient_kinetic *= density_ * inv_h * inv_h;
         const Matrix3Xr gradient_ss = -ComputeStretchingAndShearingForce(x_next);
         const Matrix3Xr gradient_bending = -ComputeBendingForce(x_next);
+        const Matrix3Xr gradient_barrier = -kappa * ComputeBarrierForce(x_next);
+        std::cout << "barrier gradient" << '\n';
+        std::cout << gradient_barrier << '\n';
+        // const Matrix3Xr total_grad =
+            // gradient_kinetic + gradient_ss + gradient_bending + gradient_barrier;
         const Matrix3Xr total_grad = gradient_kinetic + gradient_ss + gradient_bending;
-        // const Matrix3Xr total_grad = gradient_kinetic + gradient_ss;
         return total_grad.cwiseProduct(free_dof).reshaped();
     };
     auto Hess_E = [&](const Matrix3Xr &x_next) -> const SparseMatrixXr {
@@ -285,8 +335,13 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
             FromTriplet(3 * vertex_num, 3 * vertex_num, kinetic_nonzeros);
         const SparseMatrixXr H_ss = ComputeStretchingAndShearingHessian(x_next);
         const SparseMatrixXr H_bending = ComputeBendingHessian(x_next);
-        // const SparseMatrixXr H = H_kinetic + H_ss;
+        const SparseMatrixXr H_barrier = kappa * ComputeBarrierHessian(x_next);
+        std::cout << "barrier hessian" << '\n';
+        std::cout << H_barrier.nonZeros();
+        // std::cout << H_barrier << '\n';
         const SparseMatrixXr H = H_kinetic + H_ss + H_bending;
+        
+        // const SparseMatrixXr H = H_kinetic + H_ss + H_bending + H_barrier;
 
         const auto ddof = dirichlet_dof.reshaped().template cast<integer>();
         const integer size = static_cast<integer>(H.rows());
@@ -302,7 +357,6 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         for (integer i = 0; i < size; i++) {
             if (ddof(i) == 1) { H_modified_nonzeros.push_back({i, i, 1}); }
         }
-        // return H_kinetic;
         // return H_kinetic + H_ss;
         return FromTriplet(size, size, H_modified_nonzeros);
     };
@@ -311,17 +365,30 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
     real Ek = E(xk);
     VectorXr gk = grad_E(xk);
     integer newton_iter = 200;
+    double prev_min_distance = barrier_model_.closest_distance;
     while (gk.cwiseAbs().maxCoeff() > 1e-3) {
         cipc_assert(newton_iter > 0, "Newton iteration failed");
         Eigen::SimplicialLDLT<SparseMatrixXr> direct_solver(Hess_E(xk));
         const VectorXr pk = direct_solver.solve(-gk);
+        barrier_model_.is_built = false;
 
-        // line search
-        // TO DO: add ACCD aware line search
-        real ls_step = 1.0f;
+        // CCD aware line search
+        double ls_step = 1;
+        // double ls_step = std::min(
+        //     1.0, barrier_model_.accd(
+        //              xk, xk + pk.reshaped(3, vertex_num), current_mesh_.edges,
+        //              current_mesh_.indices, dmin, dhat));
+        // if (ls_step < 1.0) {
+        //     int stop = 1;
+        //     printf("collision happens at %.3f s in newton iter %d\n", ls_step, newton_iter);
+        //     std::cout << x0 << '\n';
+        //     std::cout << pk.reshaped(3, vertex_num) << '\n';
+        // }
         real E_updated = E(xk + pk.reshaped(3, vertex_num));
         integer ls_iter = 50;
+        // while (E_updated > Ek) {
         while (E_updated > Ek + 0.01f * ls_step * gk.dot(pk)) {
+            barrier_model_.is_built = false;
             cipc_assert(ls_iter > 0, "Line search failed to find sufficient decrease");
             ls_step /= 2;
             E_updated = E(xk + ls_step * pk.reshaped(3, vertex_num));
@@ -333,24 +400,15 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
 
         Ek = E_updated;
         gk = grad_E(xk);
+        kappa = update_barrier_stiffness(
+            prev_min_distance, barrier_model_.closest_distance, kappa_max, kappa, dmin);
+        prev_min_distance = barrier_model_.closest_distance;
         newton_iter -= 1;
     }
 
     // update pos and vel
     velocity_ = (xk - current_mesh_.vertices) * inv_h;
     current_mesh_.vertices = xk;
-
-    // update current mesh
-    // naive collision
-    // for (integer i = 0; i < static_cast<integer>(current_mesh_.vertices.cols()); ++i) {
-    //     Vector3r point = current_mesh_.vertices.col(i);
-    //     const real point_norm = point.squaredNorm();
-    //     if (point_norm < 0.35) {
-    //         const real projected_velocity = velocity_.col(i).dot(point);
-    //         if (projected_velocity < 0) velocity_.col(i) -= projected_velocity * point /
-    //         point_norm;
-    //     }
-    // }
 }
 
 } // namespace cipc

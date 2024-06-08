@@ -8,7 +8,8 @@ namespace cipc {
 class BarrierPotential {
   public:
     BarrierPotential() = default;
-    double dhat = 1e-4;
+    double dhat = 1e-3;
+    double closest_distance = 1.0;
     bool is_built = false;
     std::vector<EdgeEdgeCollision> edge_edge_collisions;
     std::vector<VertexFaceCollision> vertex_face_collisions;
@@ -29,7 +30,9 @@ class BarrierPotential {
             Matrix3x4r edge_pos_rest = collision.vertices(rest_vertices, edges, faces);
             collision.eps = 1e-3 * (edge_pos_rest.col(0) - edge_pos_rest.col(1)).squaredNorm()
                             * (edge_pos_rest.col(2) - edge_pos_rest.col(3)).squaredNorm();
-            if (!is_colliding(collision.distance(edge_pos))) { continue; }
+            double dist = collision.distance(edge_pos);
+            closest_distance = std::min(dist, closest_distance);
+            if (!is_colliding(dist)) { continue; }
             edge_edge_collisions.push_back(collision);
         }
 
@@ -38,7 +41,9 @@ class BarrierPotential {
             Vector4i vertex_face_idx = collision.vertices_idx(edges, faces);
             Matrix3x4r vertex_face_pos = collision.vertices(vertices, edges, faces);
 
-            if (!is_colliding(collision.distance(vertex_face_pos))) { continue; }
+            double dist = collision.distance(vertex_face_pos);
+            closest_distance = std::min(dist, closest_distance);
+            if (!is_colliding(dist)) { continue; }
             vertex_face_collisions.push_back(collision);
         }
         is_built = true;
@@ -50,7 +55,7 @@ class BarrierPotential {
         double inflation_radius = (dhat + dmin) / 2;
         ConstrainSet c;
         c.build(vertices, edges, faces, inflation_radius);
-        this->build(vertices, rest_vertices, edges, faces, dhat, dmin, c);
+        build(vertices, rest_vertices, edges, faces, dhat, dmin, c);
     }
     size_t size() const { return vertex_face_collisions.size() + edge_edge_collisions.size(); }
 
@@ -70,7 +75,7 @@ class BarrierPotential {
         return vertex_face_collisions[i];
     }
 
-    double ComputeBarrierPotential(
+    const double ComputeBarrierPotential(
         const Matrix3Xr &vertices, const Matrix2Xi &edges, const Matrix3Xi &faces,
         double dmin) const {
         cipc_assert(is_built, "not built yet for barrier potential");
@@ -92,7 +97,7 @@ class BarrierPotential {
         return energy;
     }
 
-    Matrix3Xr ComputeBarrierGradient(
+    const Matrix3Xr ComputeBarrierGradient(
         const Matrix3Xr &vertices, const Matrix2Xi &edges, const Matrix3Xi &faces,
         double dmin) const {
         cipc_assert(is_built, "not built yet for barrier potential");
@@ -137,7 +142,7 @@ class BarrierPotential {
         return gradient;
     }
 
-    SparseMatrixXr ComputeBarrierHessian(
+    const SparseMatrixXr ComputeBarrierHessian(
         const Matrix3Xr &vertices, const Matrix2Xi &edges, const Matrix3Xi &faces,
         double dmin) const {
         cipc_assert(is_built, "not built yet for barrier potential");
@@ -175,7 +180,7 @@ class BarrierPotential {
                     + m * f_grad * d_hess;
             }
 
-            // TO DO: project to spd
+            hessian_per_collision[i] = project_to_spd(hessian_per_collision[i]);
         }
 
         for (integer i = 0; i < vertex_face_collisions.size(); i++) {
@@ -207,7 +212,7 @@ class BarrierPotential {
                     + m * f_grad * d_hess;
             }
 
-            // TO DO: project to spd
+            hessian_per_collision[i] = project_to_spd(hessian_per_collision[i]);
         }
 
         const integer dim = 3;
@@ -229,6 +234,15 @@ class BarrierPotential {
         SparseMatrixXr hessian =
             FromTriplet(3 * vertex_num, 3 * vertex_num, barrier_hessian_nonzeros);
         return hessian;
+    }
+
+    double accd(
+        const Matrix3Xr &vertices0, const Matrix3Xr &vertices1, const Matrix2Xi &edges,
+        const Matrix3Xi &faces, const double dmin, const double dhat) {
+        ConstrainSet c;
+        double inflation_radius = 0.5 * (dmin + dhat);
+        c.build(vertices0, vertices1, edges, faces, inflation_radius);
+        return c.compute_accd_timestep(vertices0, vertices1, edges, faces, dmin);
     }
 };
 } // namespace cipc

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <c-ipc/solver/constitutive_model.h>
 #include <c-ipc/solver/naive_stvk_model.h>
 // #include <c-ipc/solver/stvk_model.h>
 #include <c-ipc/solver/dihedral_bending.h>

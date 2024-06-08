@@ -11,9 +11,9 @@ using namespace cipc;
 
 int main() {
     spdlog::set_pattern("[%m-%d %T] %^[%l]%$ %v");
-    const std::string output_dir("./output/naive_cloth10");
+    const std::string output_dir("./output/naive_cloth2");
     const std::string objfiles_dir("./obj_files");
-    const std::string obj_file("mat10x10.obj");
+    const std::string obj_file("mat2x2.obj");
     // print information
     spdlog::info("*** Naive Cloth Simulation without C-IPC **");
     if (!std::filesystem::exists(output_dir)) { std::filesystem::create_directories(output_dir); }
@@ -26,7 +26,7 @@ int main() {
 
     clothmesh.vertices *= 2.0;
     
-    Simulator<NaiveStvK> sim(clothmesh, 0.1f, 0.1, 1.0f);
+    Simulator<NaiveStvK> sim(clothmesh, 0.1f, 0.01, 1.0f);
 
     Matrix3Xr curr_pos = sim.get_position();
     Matrix3Xr gravity(curr_pos), dirichlet(curr_pos);
@@ -38,12 +38,12 @@ int main() {
         gravity(2, i) = -9.8f;
     }
     // fix some points
-    dirichlet.col(0) = curr_pos.col(0);
-    dirichlet.col(39) = curr_pos.col(39);
+    dirichlet.col(1) = curr_pos.col(1);
+    dirichlet.col(3) = curr_pos.col(3);
     sim.set_position(curr_pos);
     sim.set_external_acceleration(gravity);
     sim.set_dirichlet_boundary(dirichlet);
-    real timestep = 0.001f;
+    real timestep = 0.01f;
 
     std::string framepath = std::format("{}/{}_{:04d}.obj", output_dir, "naive_cloth", 0);
     write_obj(framepath, Mesh(sim.get_position(), sim.get_indice()));
