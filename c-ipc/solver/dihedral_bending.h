@@ -179,16 +179,8 @@ inline const Matrix3Xr DihedralBending::ComputeBendingForce(
             grad.col(3) = -coefficient_signed / h[0][1] * n2;
             gradient_per_hinge[3 * e + i] = grad;
 
-            // // compute grad theta
-            // gradient.col(vertexIdx(0)) += -coefficient_signed / h[0][0] * n1;
-            // gradient.col(vertexIdx(1)) +=
-            //     coefficient_signed * (cos[1][0] / h[1][0] * n1 + cos[1][1] / h[1][1] * n2);
-            // gradient.col(vertexIdx(2)) +=
-            //     coefficient_signed * (cos[0][0] / h[2][0] * n1 + cos[0][1] / h[2][1] * n2);
-            // gradient.col(vertexIdx(3)) += -coefficient_signed / h[0][1] * n2;
         }
 
-        // cipc_assert(!gradient_per_element[e].hasNaN(), "element {} gradient has nan", e);
     });
 
     for (integer h = 0; h < 3 * element_num; h++) {
@@ -212,14 +204,11 @@ inline const SparseMatrixXr DihedralBending::ComputeBendingHessian(
     Hess.setZero();
     const integer element_num = static_cast<integer>(indices.cols());
     const Matrix3Xi &elements_ = indices;
-    // std::vector<Matrix9r> hess_per_element;
-    // hess_per_element.assign(element_num, Matrix9r::Zero());
     std::vector<Matrix12r> hessian_per_hinge;
     hessian_per_hinge.assign(3 * element_num, Matrix12r::Zero());
     std::vector<Vector4i> index_per_hinge;
     index_per_hinge.assign(3 * element_num, Vector4i::Zero());
     oneapi::tbb::parallel_for(0, element_num, [&](integer e) {
-        // for (integer e = 0; e < element_num; e++) {
         const Matrix3r &this_vertices = position(Eigen::all, indices.col(e));
         const Vector3r normal = ComputeNormal(this_vertices);
         for (integer i = 0; i < 3; ++i) {
@@ -360,14 +349,6 @@ inline const SparseMatrixXr DihedralBending::ComputeBendingHessian(
 
             hessian_per_hinge[3 * e + i] = H;
             index_per_hinge[3 * e + i] = vertexIdx;
-            // // compute Hess
-            // for (int i = 0; i < 3; i++)
-            //     for (int j = 0; j < 3; j++)
-            //         for (int idx1 = 0; idx1 < 4; idx1++)
-            //             for (int idx2 = 0; idx2 < 4; idx2++) {
-            //                 Hess.coeffRef(3 * vertexIdx(idx1) + i, 3 * vertexIdx(idx2) + j) +=
-            //                     H(3 * idx1 + i, 3 * idx2 + j);
-            //             }
         }
     });
     for (int h = 0; h < 3 * element_num; h++) {
@@ -382,21 +363,6 @@ inline const SparseMatrixXr DihedralBending::ComputeBendingHessian(
                             H(3 * idx1 + i, 3 * idx2 + j);
                     }
     }
-    // for (int e = 0; e < element_num; e++) {
-    //     const Matrix9r &hess = hess_per_element[e];
-    //     for (int v1 = 0; v1 < 3; v1++) {
-    //         for (int v2 = 0; v2 < 3; v2++) {
-    //             for (int i = 0; i < 3; i++) {
-    //                 for (int j = 0; j < 3; j++) {
-    //                     integer idx1 = 3 * elements_(v1, e) + i;
-    //                     integer idx2 = 3 * elements_(v2, e) + j;
-    //                     cipc_assert(3 * v1 + i < 9 && 3 * v2 + j < 9, "out of range");
-    //                     Hess.coeffRef(idx1, idx2) += hess(3 * v1 + i, 3 * v2 + j);
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
 
     Hess.makeCompressed();
     return bending_stiffness_ * Hess;

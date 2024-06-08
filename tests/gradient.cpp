@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <iostream>
-#include "finitediff.hpp"
 #include "c-ipc/c-ipc.h"
 
 using namespace cipc;
