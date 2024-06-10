@@ -65,6 +65,7 @@ using namespace cipc;
 
 TEST_CASE("distance function", "[energy][grad][hess]") {
     spdlog::set_level(spdlog::level::debug);
+
     auto energyfunc = [&](const Matrix3x4r &pos) {
         Vector3r ea0 = pos.col(0), ea1 = pos.col(1), eb0 = pos.col(2), eb1 = pos.col(3);
         // return point_triangle_distance(ea0, ea1, eb0, eb1, PointTriangleDistType::AUTO);

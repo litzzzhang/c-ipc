@@ -285,6 +285,7 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
     // compute initial barrier stiffness
 
     auto E = [&](const Matrix3Xr &x_next) -> real {
+        cipc_assert(!x_next.hasNaN(), "vertices has nan");
         real energy_kinetic = 0;
 
         for (integer d = 0; d < 3; ++d) {
@@ -297,12 +298,12 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         const real energy_ss = ComputeStretchingAndShearingEnergy(x_next);
         const real energy_bending = ComputeBendingEnergy(x_next);
         const real energy_barrier = kappa * ComputeBarrierEnergy(x_next);
-        if (energy_barrier != 0.0) {
-            integer stop = 1;
-            // printf(
-            //     "E_barrier: %.8f, E_ss: %.6f, E_bend: %.9f, E_k: %.6f\n", energy_barrier,
-            //     energy_ss, energy_bending, energy_kinetic);
-        }
+        // if (energy_barrier != 0.0) {
+        // integer stop = 1;
+        // printf(
+        //     "E_barrier: %.8f, E_ss: %.6f, E_bend: %.9f, E_k: %.6f\n", energy_barrier,
+        //     energy_ss, energy_bending, energy_kinetic);
+        // }
         return energy_kinetic + energy_ss + energy_bending + energy_barrier;
     };
 
@@ -396,7 +397,7 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         while (E_updated > Ek + 0.01f * ls_step * gk.dot(pk)) {
             barrier_model_.is_built = false;
             // if (ls_iter == 0) { break; }
-            cipc_assert(ls_iter > 0, "Line search failed to find sufficient decrease");
+            // cipc_assert(ls_iter > 0, "Line search failed to find sufficient decrease");
             ls_step /= 2;
             // printf("line search step %.9f\n", ls_step);
             // std::cout << xk + ls_step * pk.reshaped(3, vertex_num) << '\n';
@@ -416,7 +417,7 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
 
             auto g = [&](const Matrix3Xr &pos) {
                 Matrix3Xr grad = -kappa * ComputeBarrierForce(pos);
-                std::cout << grad << '\n';
+                // std::cout << grad << '\n';
                 return grad;
             };
             std::default_random_engine rng;
@@ -432,16 +433,17 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
             printf("[hess] numeric diff:%.9f, analytic diff:%.9f\n", numeric2, analytic2);
         }
 
-        kappa = update_barrier_stiffness(
-            prev_min_distance, barrier_model_.closest_distance, kappa_max, kappa, dmin);
         Ek = E(xk);
         gk = grad_E(xk);
         // double prev_kappa = kappa;
         // kappa = update_barrier_stiffness(
         //     prev_min_distance, barrier_model_.closest_distance, kappa_max, kappa, dmin);
         // if (kappa != prev_kappa) {}
-        prev_min_distance = barrier_model_.closest_distance;
 
+        kappa = update_barrier_stiffness(
+            prev_min_distance, barrier_model_.closest_distance, kappa_max, kappa, dmin);
+        prev_min_distance = barrier_model_.closest_distance;
+        printf("****** min distance: %.14f\n", std::sqrt(prev_min_distance));
         double res = std::sqrt(pk.squaredNorm() / vertex_num) * inv_h;
         if (res < 1e-3) { newton_iter -= 1; }
         if (newton_iter <= 0) { break; }

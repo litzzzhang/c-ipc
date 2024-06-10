@@ -101,7 +101,7 @@ class EdgeEdgeCollision : public PrimativeCollision {
             const double x_div_eps_x = cross_norm_squared / eps;
             return (-x_div_eps_x + 2) * x_div_eps_x;
         } else {
-            return 0.0;
+            return 1.0;
         }
     }
 

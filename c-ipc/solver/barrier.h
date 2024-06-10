@@ -65,9 +65,9 @@ static double init_barrier_stiffness(
 static double update_barrier_stiffness(
     const double prev_min_distance, const double curr_min_distance, const double stiffness_max,
     const double stiffness, const double dmin) {
-    double dhat_eps_scale = 1e-8;
+    double dhat_eps_scale = 1e-9;
     double dhat_eps = dhat_eps_scale * (2 * std::sqrt(3) + dmin);
-    // dhat_eps *= dhat_eps;
+    dhat_eps *= dhat_eps;
     // printf("prev dist:%.14f, curr dist:%.14f, dhat eps:%.14f\n", prev_min_distance, curr_min_distance, dhat_eps);
     if (prev_min_distance < dhat_eps && curr_min_distance < dhat_eps
         && curr_min_distance < prev_min_distance) {

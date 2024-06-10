@@ -11,7 +11,7 @@ using namespace cipc;
 
 int main() {
     spdlog::set_pattern("[%m-%d %T] %^[%l]%$ %v");
-    const std::string output_dir("./output/naive_cloth3");
+    const std::string output_dir("./output/naive_cloth10");
     const std::string objfiles_dir("./obj_files");
     const std::string obj_file("mat3x3.obj");
     // print information

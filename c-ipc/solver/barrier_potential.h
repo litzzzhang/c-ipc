@@ -233,11 +233,8 @@ class BarrierPotential {
         std::vector<Matrix12r> hessian_per_collision(size());
         std::vector<Vector4i> hessian_map(size());
 
-        integer ee_collision_size = static_cast<integer>(edge_edge_collisions.size());
-
         integer ee_num = static_cast<integer>(edge_edge_collisions.size());
         integer vf_num = static_cast<integer>(vertex_face_collisions.size());
-        integer total_collision_num = static_cast<integer>(size());
         oneapi::tbb::parallel_for(0, ee_num, [&](integer i) {
             EdgeEdgeCollision collision = edge_edge_collisions[i];
             hessian_per_collision[i] = Matrix12r::Zero();
