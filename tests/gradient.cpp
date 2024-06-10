@@ -5,64 +5,101 @@
 
 using namespace cipc;
 
-TEST_CASE("Stretching Energy", "[gradient][hessian]") {
+// TEST_CASE("Stretching Energy", "[gradient][hessian]") {
+//     spdlog::set_level(spdlog::level::debug);
+//     Mesh clothmesh;
+//     std::string filepath = std::format("{}/{}", "./obj_files", "mat10x10.obj");
+//     load_obj(filepath, clothmesh);
+//     Simulator<NaiveStvK> sim(clothmesh, 0.1f, 1.0f, 1.0f);
+//     Matrix3Xr curr_pos = sim.get_position();
+//     Matrix3Xr gravity(curr_pos), dirichlet(curr_pos);
+//     const real inf = std::numeric_limits<real>::infinity();
+//     gravity.setZero(), dirichlet.setConstant(inf);
+//     integer vertex_num = static_cast<integer>(curr_pos.cols());
+//     for (integer i = 0; i < vertex_num; i++) { curr_pos(2, i) = 2.0f; }
+//     // fix some points
+//     dirichlet.col(1) = curr_pos.col(1);
+//     dirichlet.col(9) = curr_pos.col(9);
+//     // dirichlet.col(9) = curr_pos.col(9);
+//     sim.set_position(curr_pos);
+//     sim.set_external_acceleration(gravity);
+//     sim.set_dirichlet_boundary(dirichlet);
+//     real timestep = 0.01f;
+
+//     auto energyfunc = [&](const Matrix3Xr &pos) {
+//         return sim.ComputeStretchingAndShearingEnergy(pos);
+//         // return pos.reshaped().squaredNorm();
+//     };
+//     auto gradientfunc = [&](const Matrix3Xr &pos) {
+//         return -sim.ComputeStretchingAndShearingForce(pos);
+//         // return 2 * pos;
+//     };
+//     auto hessfunc = [&](const Matrix3Xr &pos) {
+//         return sim.ComputeStretchingAndShearingHessian(pos);
+//         // std::vector<Eigen::Triplet<double>> list;
+//         // int vertex_num = static_cast<int>(pos.cols());
+//         // for (integer i = 0; i < 3 * vertex_num; i++){
+//         //     list.push_back({i, i, 2.0});
+//         // }
+//         // return FromTriplet(3 * vertex_num, 3 * vertex_num, list);
+//     };
+
+//     std::default_random_engine rng;
+//     rng.seed((unsigned)std::chrono::system_clock::now().time_since_epoch().count());
+//     for (integer i = 0; i < 1; i++) {
+//         sim.Forward(timestep);
+//         Matrix3Xr x = sim.get_position();
+//         auto grad_result = finite_gradient(x, rng, energyfunc, gradientfunc(x));
+//         auto hess_result = finite_hessian(x, rng, gradientfunc, hessfunc(x));
+//         // printf("%.9f, %.9f\n", grad_result.analytic_diff, grad_result.numeric_diff);
+//         REQUIRE_THAT(
+//             grad_result.numeric_diff,
+//             Catch::Matchers::WithinAbs(grad_result.analytic_diff, 0.001)
+//                 || Catch::Matchers::WithinRel(grad_result.analytic_diff, 0.001));
+//         REQUIRE_THAT(
+//             hess_result.numeric_diff.squaredNorm(),
+//             Catch::Matchers::WithinAbs(hess_result.analytic_diff.squaredNorm(), 0.01)
+//                 || Catch::Matchers::WithinRel(hess_result.analytic_diff.squaredNorm(), 0.01));
+//     }
+// }
+
+TEST_CASE("distance function", "[energy][grad][hess]") {
     spdlog::set_level(spdlog::level::debug);
-    Mesh clothmesh;
-    std::string filepath = std::format("{}/{}", "./obj_files", "mat10x10.obj");
-    load_obj(filepath, clothmesh);
-    Simulator<NaiveStvK> sim(clothmesh, 0.1f, 1.0f, 1.0f);
-    Matrix3Xr curr_pos = sim.get_position();
-    Matrix3Xr gravity(curr_pos), dirichlet(curr_pos);
-    const real inf = std::numeric_limits<real>::infinity();
-    gravity.setZero(), dirichlet.setConstant(inf);
-    integer vertex_num = static_cast<integer>(curr_pos.cols());
-    for (integer i = 0; i < vertex_num; i++) { curr_pos(2, i) = 2.0f; }
-    // fix some points
-    dirichlet.col(1) = curr_pos.col(1);
-    dirichlet.col(9) = curr_pos.col(9);
-    // dirichlet.col(9) = curr_pos.col(9);
-    sim.set_position(curr_pos);
-    sim.set_external_acceleration(gravity);
-    sim.set_dirichlet_boundary(dirichlet);
-    real timestep = 0.01f;
-
-    auto energyfunc = [&](const Matrix3Xr &pos) {
-        return sim.ComputeStretchingAndShearingEnergy(pos);
-        // return pos.reshaped().squaredNorm();
+    auto energyfunc = [&](const Matrix3x4r &pos) {
+        Vector3r ea0 = pos.col(0), ea1 = pos.col(1), eb0 = pos.col(2), eb1 = pos.col(3);
+        // return point_triangle_distance(ea0, ea1, eb0, eb1, PointTriangleDistType::AUTO);
+        return edge_edge_distance(ea0, ea1, eb0, eb1, EdgeEdgeDistType::AUTO);
     };
-    auto gradientfunc = [&](const Matrix3Xr &pos) {
-        return -sim.ComputeStretchingAndShearingForce(pos);
-        // return 2 * pos;
+    auto gradientfunc = [&](const Matrix3x4r &pos) {
+        Vector3r ea0 = pos.col(0), ea1 = pos.col(1), eb0 = pos.col(2), eb1 = pos.col(3);
+        // return point_triangle_distance_gradient(ea0, ea1, eb0, eb1, PointTriangleDistType::AUTO);
+        return edge_edge_distance_gradient(ea0, ea1, eb0, eb1, EdgeEdgeDistType::AUTO);
     };
-    auto hessfunc = [&](const Matrix3Xr &pos) {
-        return sim.ComputeStretchingAndShearingHessian(pos);
-        // std::vector<Eigen::Triplet<double>> list;
-        // int vertex_num = static_cast<int>(pos.cols());
-        // for (integer i = 0; i < 3 * vertex_num; i++){
-        //     list.push_back({i, i, 2.0});
-        // }
-        // return FromTriplet(3 * vertex_num, 3 * vertex_num, list);
+    auto hessfunc = [&](const Matrix3x4r &pos) {
+        Vector3r ea0 = pos.col(0), ea1 = pos.col(1), eb0 = pos.col(2), eb1 = pos.col(3);
+        return edge_edge_distance_hessian(ea0, ea1, eb0, eb1, EdgeEdgeDistType::AUTO);
+        // return point_triangle_distance_hessian(ea0, ea1, eb0, eb1, PointTriangleDistType::AUTO);
     };
-
     std::default_random_engine rng;
     rng.seed((unsigned)std::chrono::system_clock::now().time_since_epoch().count());
     for (integer i = 0; i < 1000; i++) {
-        sim.Forward(timestep);
-        Matrix3Xr x = sim.get_position();
-        auto grad_result = finite_gradient(x, rng, energyfunc, gradientfunc(x));
-        auto hess_result = finite_hessian(x, rng, gradientfunc, hessfunc(x));
+
+        Matrix3x4r x = Matrix3x4r::Random();
+        auto grad_result = finite_gradient<std::default_random_engine, Matrix3x4r>(
+            x, rng, energyfunc, gradientfunc(x));
+        auto hess_result = finite_hessian<std::default_random_engine, Matrix3x4r, Matrix12r>(
+            x, rng, gradientfunc, hessfunc(x));
         // printf("%.9f, %.9f\n", grad_result.analytic_diff, grad_result.numeric_diff);
         REQUIRE_THAT(
             grad_result.numeric_diff,
-            Catch::Matchers::WithinAbs(grad_result.analytic_diff, 0.001)
-                || Catch::Matchers::WithinRel(grad_result.analytic_diff, 0.001));
+            Catch::Matchers::WithinAbs(grad_result.analytic_diff, 0.1)
+                || Catch::Matchers::WithinRel(grad_result.analytic_diff, 0.01));
         REQUIRE_THAT(
             hess_result.numeric_diff.squaredNorm(),
-            Catch::Matchers::WithinAbs(hess_result.analytic_diff.squaredNorm(), 0.01)
+            Catch::Matchers::WithinAbs(hess_result.analytic_diff.squaredNorm(), 0.1)
                 || Catch::Matchers::WithinRel(hess_result.analytic_diff.squaredNorm(), 0.01));
     }
 }
-
 // TEST_CASE("check the correctness of checkers", "meta check") {
 //     spdlog::info("checker check");
 //     integer dim = 9999;

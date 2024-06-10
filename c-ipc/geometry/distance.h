@@ -102,7 +102,7 @@ static EdgeEdgeDistType parallel_edge_dist_type(
 
 static EdgeEdgeDistType edge_edge_dist_type(
     const Vector3r &ea0, const Vector3r &ea1, const Vector3r &eb0, const Vector3r &eb1) {
-    constexpr double PARALLEL_THRESHOLD = 1.0e-20;
+    constexpr double PARALLEL_THRESHOLD = 1.0e-15;
     const Vector3r u = ea1 - ea0;
     const Vector3r v = eb1 - eb0;
     const Vector3r w = ea0 - eb0;
@@ -1233,23 +1233,23 @@ static Matrix12r edge_edge_distance_hessian(
     switch (dist_type) {
     case EdgeEdgeDistType::EA0_EB0: {
         Matrix6r local_hess = point_point_distance_hessian(ea0, eb0);
-        hessian.block(0, 0, 3, 3) = local_hess.topLeftCorner<3, 3>();
-        hessian.block(0, 6, 3, 3) = local_hess.topRightCorner<3, 3>();
-        hessian.block(6, 0, 3, 3) = local_hess.bottomLeftCorner<3, 3>();
-        hessian.block(6, 6, 3, 3) = local_hess.bottomRightCorner<3, 3>();
+        hessian.topLeftCorner<3, 3>() = local_hess.topLeftCorner<3, 3>();
+        hessian.block<3, 3>(0, 6) = local_hess.topRightCorner<3, 3>();
+        hessian.block<3, 3>(6, 0) = local_hess.bottomLeftCorner<3, 3>();
+        hessian.block<3, 3>(6, 6) = local_hess.bottomRightCorner<3, 3>();
         break;
     }
     case EdgeEdgeDistType::EA0_EB1: {
         Matrix6r local_hess = point_point_distance_hessian(ea0, eb1);
-        hessian.block(0, 0, 3, 3) = local_hess.topLeftCorner<3, 3>();
-        hessian.block(0, 9, 3, 3) = local_hess.topRightCorner<3, 3>();
-        hessian.block(9, 0, 3, 3) = local_hess.bottomLeftCorner<3, 3>();
-        hessian.block(9, 9, 3, 3) = local_hess.bottomRightCorner<3, 3>();
+        hessian.topLeftCorner<3, 3>() = local_hess.topLeftCorner<3, 3>();
+        hessian.topRightCorner<3, 3>() = local_hess.topRightCorner<3, 3>();
+        hessian.bottomLeftCorner<3, 3>() = local_hess.bottomLeftCorner<3, 3>();
+        hessian.bottomRightCorner<3, 3>() = local_hess.bottomRightCorner<3, 3>();
         break;
     }
     case EdgeEdgeDistType::EA1_EB0: {
         Matrix6r local_hess = point_point_distance_hessian(ea1, eb0);
-        hessian.block(3, 3, 6, 6) = local_hess;
+        hessian.block<6, 6>(3, 3) = local_hess;
         break;
     }
     case EdgeEdgeDistType::EA1_EB1: {
@@ -1266,10 +1266,12 @@ static Matrix12r edge_edge_distance_hessian(
         hessian.block(0, 6, 3, 6) = local_hess.topRightCorner<3, 6>();
         hessian.block(6, 0, 6, 3) = local_hess.bottomLeftCorner<6, 3>();
         hessian.block(6, 6, 6, 6) = local_hess.bottomRightCorner<6, 6>();
+        break;
     }
     case EdgeEdgeDistType::EA1_EB: {
         Matrix9r local_hess = point_line_distance_hessian(ea1, eb0, eb1);
         hessian.block(3, 3, 9, 9) = local_hess;
+        break;
     }
     case EdgeEdgeDistType::EA_EB0: {
         Matrix9r local_hess = point_line_distance_hessian(eb0, ea0, ea1);
@@ -1277,6 +1279,7 @@ static Matrix12r edge_edge_distance_hessian(
         hessian.block(6, 0, 3, 6) = local_hess.topRightCorner<3, 6>();
         hessian.block(0, 6, 6, 3) = local_hess.bottomLeftCorner<6, 3>();
         hessian.block(6, 6, 3, 3) = local_hess.topLeftCorner<3, 3>();
+        break;
     }
     case EdgeEdgeDistType::EA_EB1: {
         Matrix9r local_hess = point_line_distance_hessian(eb1, ea0, ea1);
@@ -1284,9 +1287,11 @@ static Matrix12r edge_edge_distance_hessian(
         hessian.block(0, 9, 6, 3) = local_hess.bottomLeftCorner<6, 3>();
         hessian.block(9, 0, 3, 6) = local_hess.topRightCorner<3, 6>();
         hessian.block(9, 9, 3, 3) = local_hess.topLeftCorner<3, 3>();
+        break;
     }
     case EdgeEdgeDistType::EA_EB: {
         hessian = line_line_distance_hessian(ea0, ea1, eb0, eb1);
+        break;
     }
     default: break;
     }
@@ -1763,43 +1768,54 @@ static Matrix12r point_triangle_distance_hessian(
     switch (dist_type) {
     case PointTriangleDistType::P_T0: {
         Matrix6r local_hess = point_point_distance_hessian(p, t0);
-        hessian.block(0, 0, 6, 6) = local_hess;
+        hessian.topLeftCorner<6, 6>() = local_hess;
         break;
     }
     case PointTriangleDistType::P_T1: {
         Matrix6r local_hess = point_point_distance_hessian(p, t1);
-        hessian.block(0, 0, 3, 3) = local_hess.topLeftCorner<3, 3>();
-        hessian.block(0, 6, 3, 3) = local_hess.topRightCorner<3, 3>();
-        hessian.block(6, 0, 3, 3) = local_hess.bottomLeftCorner<3, 3>();
-        hessian.block(6, 6, 3, 3) = local_hess.bottomRightCorner<3, 3>();
+        hessian.topLeftCorner<3, 3>() = local_hess.topLeftCorner<3, 3>();
+        hessian.block<3, 3>(0, 6) = local_hess.topRightCorner<3, 3>();
+        hessian.block<3, 3>(6, 0) = local_hess.bottomLeftCorner<3, 3>();
+        hessian.block<3, 3>(6, 6) = local_hess.bottomRightCorner<3, 3>();
+        break;
     }
     case PointTriangleDistType::P_T2: {
         Matrix6r local_hess = point_point_distance_hessian(p, t2);
-        hessian.block(0, 0, 3, 3) = local_hess.topLeftCorner<3, 3>();
-        hessian.block(0, 9, 3, 3) = local_hess.topRightCorner<3, 3>();
-        hessian.block(9, 0, 3, 3) = local_hess.bottomLeftCorner<3, 3>();
-        hessian.block(9, 9, 3, 3) = local_hess.bottomRightCorner<3, 3>();
+        hessian.topLeftCorner<3, 3>() = local_hess.topLeftCorner<3, 3>();
+        hessian.topRightCorner<3, 3>() = local_hess.topRightCorner<3, 3>();
+        hessian.bottomLeftCorner<3, 3>() = local_hess.bottomLeftCorner<3, 3>();
+        hessian.bottomRightCorner<3, 3>() = local_hess.bottomRightCorner<3, 3>();
+        break;
     }
     case PointTriangleDistType::P_T0T1: {
         Matrix9r local_hess = point_line_distance_hessian(p, t0, t1);
-        hessian.block(0, 0, 9, 9) = local_hess;
+        hessian.topLeftCorner<9, 9>() = local_hess;
+        break;
     }
     case PointTriangleDistType::P_T1T2: {
         Matrix9r local_hess = point_line_distance_hessian(p, t1, t2);
-        hessian.block(0, 0, 3, 3) = local_hess.topLeftCorner<3, 3>();
-        hessian.block(0, 6, 3, 6) = local_hess.topRightCorner<3, 6>();
-        hessian.block(6, 0, 6, 3) = local_hess.bottomLeftCorner<6, 3>();
-        hessian.block(6, 6, 6, 6) = local_hess.bottomRightCorner<6, 6>();
+        hessian.topLeftCorner<3, 3>() = local_hess.topLeftCorner<3, 3>();
+        hessian.topRightCorner<3, 6>() = local_hess.topRightCorner<3, 6>();
+        hessian.bottomLeftCorner<6, 3>() = local_hess.bottomLeftCorner<6, 3>();
+        hessian.bottomRightCorner<6, 6>() = local_hess.bottomRightCorner<6, 6>();
+        break;
     }
     case PointTriangleDistType::P_T2T0: {
-        Matrix9r local_hess = point_line_distance_hessian(p, t0, t2);
-        hessian.block(0, 0, 6, 6) = local_hess.topLeftCorner<6, 6>();
-        hessian.block(0, 9, 3, 3) = local_hess.topRightCorner<3, 3>();
-        hessian.block(9, 0, 3, 3) = local_hess.bottomLeftCorner<3, 3>();
-        hessian.block(9, 9, 3, 3) = local_hess.bottomRightCorner<3, 3>();
+        Matrix9r local_hess = point_line_distance_hessian(p, t2, t0);
+        hessian.topLeftCorner<3, 3>() = local_hess.topLeftCorner<3, 3>();
+        hessian.block<3, 3>(0, 3) = local_hess.topRightCorner<3, 3>();
+        hessian.topRightCorner<3, 3>() = local_hess.block<3, 3>(0, 3);
+        hessian.block<3, 3>(3, 0) = local_hess.bottomLeftCorner<3, 3>();
+        hessian.block<3, 3>(3, 3) = local_hess.bottomRightCorner<3, 3>();
+        hessian.block<3, 3>(3, 9) = local_hess.block<3, 3>(6, 3);
+        hessian.bottomLeftCorner<3, 3>() = local_hess.block<3, 3>(3, 0);
+        hessian.block<3, 3>(9, 3) = local_hess.block<3, 3>(3, 6);
+        hessian.bottomRightCorner<3, 3>() = local_hess.block<3, 3>(3, 3);
+        break;
     }
     case PointTriangleDistType::P_T: {
         hessian = point_plane_distance_hessian(p, t0, t1, t2);
+        break;
     }
 
     default: break;

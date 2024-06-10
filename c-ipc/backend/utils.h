@@ -23,10 +23,10 @@ struct gradient_diff_result {
     double analytic_diff;
 };
 
-template <typename RandomEngine>
+template <typename RandomEngine, typename GMatrix>
 static gradient_diff_result finite_gradient(
-    const Matrix3Xr &x, RandomEngine &rng, std::function<double(const Matrix3Xr &)> f,
-    const Matrix3Xr &grad, double eps = 1e-8) {
+    const GMatrix &x, RandomEngine &rng, std::function<double(const GMatrix &)> f,
+    const GMatrix &grad, double eps = 1e-13) {
     integer vertex_num = static_cast<integer>(x.cols());
     integer dim = 3 * vertex_num;
     double energy = f(x);
@@ -43,8 +43,8 @@ static gradient_diff_result finite_gradient(
     }
 
     gradient_diff_result result;
-    Matrix3Xr x_plus = x + eps * test_dir.reshaped(3, vertex_num);
-    Matrix3Xr x_minus = x - eps * test_dir.reshaped(3, vertex_num);
+    GMatrix x_plus = x + eps * test_dir.reshaped(3, vertex_num);
+    GMatrix x_minus = x - eps * test_dir.reshaped(3, vertex_num);
     double energy_plus = f(x_plus);
     double energy_minus = f(x_minus);
     result.numeric_diff = (energy_plus - energy_minus) / (2 * eps);
@@ -58,13 +58,12 @@ struct hessian_diff_result {
     VectorXr analytic_diff;
 };
 
-template <typename RandomEngine>
+template <typename RandomEngine, typename GMatrix, typename HMatrix>
 static hessian_diff_result finite_hessian(
-    const Matrix3Xr &x, RandomEngine &rng, std::function<Matrix3Xr(const Matrix3Xr &)> g,
-    const SparseMatrixXr &hess, double eps = 1e-8) {
+    const GMatrix &x, RandomEngine &rng, std::function<GMatrix(const GMatrix &)> g,
+    const HMatrix &hess, double eps = 1e-13) {
     integer vertex_num = static_cast<integer>(x.cols());
     integer dim = 3 * vertex_num;
-    Matrix3Xr gradient = g(x);
 
     VectorXr test_dir = VectorXr::Zero(dim);
     static std::uniform_real_distribution<real> unit_random(0.0, 1.0);
@@ -79,12 +78,12 @@ static hessian_diff_result finite_hessian(
     }
 
     hessian_diff_result result;
-    Matrix3Xr x_plus = x + eps * test_dir.reshaped(3, vertex_num);
-    Matrix3Xr x_minus = x - eps * test_dir.reshaped(3, vertex_num);
-    Matrix3Xr gradient_plus = g(x_plus);
-    Matrix3Xr gradient_minus = g(x_minus);
+    GMatrix x_plus = x + eps * test_dir.reshaped(3, vertex_num);
+    GMatrix x_minus = x - eps * test_dir.reshaped(3, vertex_num);
+    GMatrix gradient_plus = g(x_plus);
+    GMatrix gradient_minus = g(x_minus);
     result.numeric_diff = (gradient_plus - gradient_minus).reshaped() / (2 * eps);
-    result.analytic_diff = hess * test_dir.reshaped();
+    result.analytic_diff = hess * test_dir;
 
     return result;
 }
