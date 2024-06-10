@@ -11,9 +11,9 @@ using namespace cipc;
 
 int main() {
     spdlog::set_pattern("[%m-%d %T] %^[%l]%$ %v");
-    const std::string output_dir("./output/naive_cloth10");
+    const std::string output_dir("./output/naive_cloth40");
     const std::string objfiles_dir("./obj_files");
-    const std::string obj_file("mat3x3.obj");
+    const std::string obj_file("mat40x40.obj");
     // print information
     spdlog::info("*** Naive Cloth Simulation without C-IPC **");
     if (!std::filesystem::exists(output_dir)) { std::filesystem::create_directories(output_dir); }
@@ -38,8 +38,8 @@ int main() {
         gravity(2, i) = -9.8f;
     }
     // fix some points
-    dirichlet.col(2) = curr_pos.col(2);
-    dirichlet.col(vertex_num - 1 - 2) = curr_pos.col(vertex_num - 1 - 2);
+    dirichlet.col(0) = curr_pos.col(0);
+    dirichlet.col(vertex_num - 1) = curr_pos.col(vertex_num - 1);
     // dirichlet.col(1) = curr_pos.col(1);
     // dirichlet.col(vertex_num - 1) = curr_pos.col(vertex_num - 1);
     sim.set_position(curr_pos);

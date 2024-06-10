@@ -67,6 +67,5 @@ class VertexFaceCollision : public PrimativeCollision {
         return t_ccd_addictive;
     }
 
-    // TO DO: sorting???
 };
 } // namespace cipc

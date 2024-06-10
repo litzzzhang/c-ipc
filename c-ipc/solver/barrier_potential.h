@@ -118,7 +118,7 @@ class BarrierPotential {
             [](double x, double y) {
                 return x + y;
             });
-        if (ee_energy > 0.0) { printf("*********** edge edge collision ****************\n"); }
+        // if (ee_energy > 0.0) { printf("*********** edge edge collision ****************\n"); }
         vf_energy = oneapi::tbb::parallel_deterministic_reduce(
             oneapi::tbb::blocked_range<integer>(0, vf_num), 0.0,
             [&](oneapi::tbb::blocked_range<integer> r, double local) {
@@ -133,7 +133,7 @@ class BarrierPotential {
             [](double x, double y) {
                 return x + y;
             });
-        if (vf_energy > 0.0) { printf("*********** vertex face collision ****************\n"); }
+        // if (vf_energy > 0.0) { printf("*********** vertex face collision ****************\n"); }
         // for (integer i = 0; i < edge_edge_collisions.size(); i++) {
         //     EdgeEdgeCollision collision = edge_edge_collisions[i];
         //     Matrix3x4r curr_pos = collision.vertices(vertices, edges, faces);

@@ -94,10 +94,10 @@ inline void BroadPhaseBVH::detect_collsion(
     const std::vector<AABB> &boxes, const SimpleBVH::BVH &bvh,
     std::vector<Primative> &collision_primatives) {
 
-    // oneapi::tbb::concurrent_vector<Primative> collision_primatives_concurrent;
+    oneapi::tbb::concurrent_vector<Primative> collision_primatives_concurrent;
 
-    // oneapi::tbb::parallel_for(0, static_cast<integer>(boxes.size()), [&](integer i) {
-    for (integer i = 0; i < static_cast<int>(boxes.size()); i++) {
+    oneapi::tbb::parallel_for(0, static_cast<integer>(boxes.size()), [&](integer i) {
+    // for (integer i = 0; i < static_cast<int>(boxes.size()); i++) {
         std::vector<unsigned int> list;
         bvh.intersect_3D_box(boxes[i].min, boxes[i].max, list);
         for (const unsigned int j : list) {
@@ -107,16 +107,16 @@ inline void BroadPhaseBVH::detect_collsion(
                 if (ai >= bi) { continue; }
             }
             Primative collision(ai, bi);
-            // collision_primatives_concurrent.push_back(collision);
-            collision_primatives.push_back(collision);
+            collision_primatives_concurrent.push_back(collision);
+            // collision_primatives.push_back(collision);
         }
-    }
-    // });
-
-    // collision_primatives.reserve(collision_primatives_concurrent.size());
-    // for (auto it = collision_primatives_concurrent.begin();
-    //      it != collision_primatives_concurrent.end(); ++it) {
-    //     collision_primatives.push_back(*it);
     // }
+    });
+
+    collision_primatives.reserve(collision_primatives_concurrent.size());
+    for (auto it = collision_primatives_concurrent.begin();
+         it != collision_primatives_concurrent.end(); ++it) {
+        collision_primatives.push_back(*it);
+    }
 }
 } // namespace cipc

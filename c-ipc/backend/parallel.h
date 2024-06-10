@@ -5,5 +5,4 @@
 #include <oneapi/tbb/concurrent_vector.h>
 
 namespace cipc {
-    // TO DO: perfect forwarding to remove verbose namespace
 }

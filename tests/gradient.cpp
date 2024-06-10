@@ -183,7 +183,6 @@ TEST_CASE("distance function", "[energy][grad][hess]") {
 //     }
 // }
 
-// // TO DO: set dirichlet boundary condition
 // // note the checker is right
 // TEST_CASE("stretching energy gradient check", "[NaiveStvK]") {
 

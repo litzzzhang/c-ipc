@@ -7,7 +7,6 @@
 namespace cipc {
 
 // N is the number of vertices in the first geometry primative
-// TO DO: thickness or dhat+thickness
 template <int N>
 bool addictive_ccd(
     Matrix3x4r pos0, Matrix3x4r pos_delta, const double thickness,

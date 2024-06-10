@@ -115,7 +115,6 @@ template <typename MaterialType>
 inline Simulator<MaterialType>::Simulator(
     const Mesh &mesh, const real thickness, const real bending_stiffness, const real density)
     : thickness_(thickness), bending_stiffness_(bending_stiffness), density_(density) {
-    // TO DO: modify bending stiffness coording to material parameters
     current_mesh_ = mesh;
     const Matrix3Xr &vertices = mesh.vertices;
     const Matrix3Xi &indices = mesh.indices;
@@ -408,30 +407,30 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         // Exit if no progress could be made.
         if (ls_step * pk.cwiseAbs().maxCoeff() <= 1e-12) { break; }
         double barrier_energy = kappa * ComputeBarrierEnergy(xk);
-        if (barrier_energy > 0.0) {
-            Matrix3Xr barrier_grad = -kappa * ComputeBarrierForce(xk);
-            SparseMatrixXr barrier_hess = kappa * ComputeBarrierHessian(xk);
-            auto f = [&](const Matrix3Xr &pos) {
-                return kappa * ComputeBarrierEnergy(pos);
-            };
+        // if (barrier_energy > 0.0) {
+        //     Matrix3Xr barrier_grad = -kappa * ComputeBarrierForce(xk);
+        //     SparseMatrixXr barrier_hess = kappa * ComputeBarrierHessian(xk);
+        //     auto f = [&](const Matrix3Xr &pos) {
+        //         return kappa * ComputeBarrierEnergy(pos);
+        //     };
 
-            auto g = [&](const Matrix3Xr &pos) {
-                Matrix3Xr grad = -kappa * ComputeBarrierForce(pos);
-                // std::cout << grad << '\n';
-                return grad;
-            };
-            std::default_random_engine rng;
-            rng.seed((unsigned)std::chrono::system_clock::now().time_since_epoch().count());
-            auto [numeric1, analytic1] =
-                finite_gradient<std::default_random_engine, Matrix3Xr>(xk, rng, f, barrier_grad);
-            hessian_diff_result result2 =
-                finite_hessian<std::default_random_engine, Matrix3Xr, SparseMatrixXr>(
-                    xk, rng, g, barrier_hess);
-            double numeric2 = result2.numeric_diff.squaredNorm();
-            double analytic2 = result2.analytic_diff.squaredNorm();
-            printf("[grad] numeric diff:%.9f, analytic diff:%.9f\n", numeric1, analytic1);
-            printf("[hess] numeric diff:%.9f, analytic diff:%.9f\n", numeric2, analytic2);
-        }
+        //     auto g = [&](const Matrix3Xr &pos) {
+        //         Matrix3Xr grad = -kappa * ComputeBarrierForce(pos);
+        //         // std::cout << grad << '\n';
+        //         return grad;
+        //     };
+        //     std::default_random_engine rng;
+        //     rng.seed((unsigned)std::chrono::system_clock::now().time_since_epoch().count());
+        //     auto [numeric1, analytic1] =
+        //         finite_gradient<std::default_random_engine, Matrix3Xr>(xk, rng, f, barrier_grad);
+        //     hessian_diff_result result2 =
+        //         finite_hessian<std::default_random_engine, Matrix3Xr, SparseMatrixXr>(
+        //             xk, rng, g, barrier_hess);
+        //     double numeric2 = result2.numeric_diff.squaredNorm();
+        //     double analytic2 = result2.analytic_diff.squaredNorm();
+        //     printf("[grad] numeric diff:%.9f, analytic diff:%.9f\n", numeric1, analytic1);
+        //     printf("[hess] numeric diff:%.9f, analytic diff:%.9f\n", numeric2, analytic2);
+        // }
 
         Ek = E(xk);
         gk = grad_E(xk);
@@ -443,7 +442,7 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         kappa = update_barrier_stiffness(
             prev_min_distance, barrier_model_.closest_distance, kappa_max, kappa, dmin);
         prev_min_distance = barrier_model_.closest_distance;
-        printf("****** min distance: %.14f\n", std::sqrt(prev_min_distance));
+        // printf("****** min distance: %.14f\n", std::sqrt(prev_min_distance));
         double res = std::sqrt(pk.squaredNorm() / vertex_num) * inv_h;
         if (res < 1e-3) { newton_iter -= 1; }
         if (newton_iter <= 0) { break; }
