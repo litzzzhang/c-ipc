@@ -4,6 +4,7 @@
 #include <c-ipc/geometry/bvh.h>
 #include <c-ipc/geometry/vertex_face_collision.h>
 #include <c-ipc/geometry/edge_edge_collision.h>
+#include <shared_mutex>
 
 namespace cipc {
 
@@ -65,15 +66,41 @@ inline double ConstrainSet::compute_accd_timestep(
 
     double time_of_impact = 1.0;
     // TO DO: parallel
-    for (integer i = 0; i < size(); i++) {
-        const PrimativeCollision &collision = (*this)[i];
-        const Vector4i idx = collision.vertices_idx(edges, faces);
-        const Matrix3x4r pos0 = vertices0(Eigen::all, idx);
-        const Matrix3x4r pos1 = vertices1(Eigen::all, idx);
-        time_of_impact = std::min(
-            time_of_impact,
-            collision.compute_accd_timestep(pos0, pos1, min_distance, time_of_impact, max_iteration));
-    }
+    if (size() == 0) { return time_of_impact; }
+    std::shared_mutex toi_mutex;
+
+    oneapi::tbb::parallel_for(
+        oneapi::tbb::blocked_range<size_t>(0, size()), [&](oneapi::tbb::blocked_range<size_t> r) {
+            for (size_t i = r.begin(); i < r.end(); i++) {
+                double tmax;
+                {
+                    std::shared_lock lock(toi_mutex);
+                    tmax = time_of_impact;
+                }
+                const PrimativeCollision &collision = (*this)[i];
+                const Vector4i idx = collision.vertices_idx(edges, faces);
+                const Matrix3x4r pos0 = vertices0(Eigen::all, idx);
+                const Matrix3x4r pos1 = vertices1(Eigen::all, idx);
+                double local_toi = std::numeric_limits<double>::infinity();
+                local_toi = collision.compute_accd_timestep(pos0, pos1, min_distance, tmax, max_iteration);
+                if (local_toi < 1.0){
+                    std::unique_lock lock(toi_mutex);
+                    if (local_toi < time_of_impact){
+                        time_of_impact = local_toi;
+                    }
+                }
+            }
+        });
+
+    //  (integer i = 0; i < size(); i++) {
+    //     const PrimativeCollision &collision = (*this)[i];
+    //     const Vector4i idx = collision.vertices_idx(edges, faces);
+    //     const Matrix3x4r pos0 = vertices0(Eigen::all, idx);
+    //     const Matrix3x4r pos1 = vertices1(Eigen::all, idx);
+    //     time_of_impact = std::min(
+    //         time_of_impact, collision.compute_accd_timestep(
+    //                             pos0, pos1, min_distance, time_of_impact, max_iteration));
+    // }
     return time_of_impact;
 }
 
@@ -96,12 +123,10 @@ inline void ConstrainSet::remove_adjacent_vertex_face(const Matrix3Xi &faces) {
     std::vector<VertexFaceCollision> valid_vertex_face_set;
     for (integer i = 0; i < vertex_face_set.size(); i++) {
         VertexFaceCollision collision = vertex_face_set[i];
-        integer v = collision.vertex_idx; 
+        integer v = collision.vertex_idx;
         Vector3i face_idx = faces.col(collision.face_idx);
         integer t0 = face_idx(0), t1 = face_idx(1), t2 = face_idx(2);
-        if (v != t0 && v != t1 && v != t2) {
-            valid_vertex_face_set.push_back(collision);
-        }
+        if (v != t0 && v != t1 && v != t2) { valid_vertex_face_set.push_back(collision); }
     }
     vertex_face_set = valid_vertex_face_set;
 }

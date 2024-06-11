@@ -1,4 +1,3 @@
-#include <iostream>
 #include "c-ipc/c-ipc.h"
 
 using namespace cipc;

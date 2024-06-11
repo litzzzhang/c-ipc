@@ -1,8 +1,8 @@
 [
 {
   "directory": "D:\\dev\\personal\\c-ipc",
-  "arguments": ["C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.38.33130\\bin\\HostX64\\x64\\cl.exe", "/c", "/nologo", "/W3", "/fp:precise", "/O2", "/std:c++20", "/I.", "/D_CRT_SECURE_NO_WARNINGS", "/DSPDLOG_USE_STD_FORMAT", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\c\\catch2\\v3.6.0\\7e203c8196de43ac934e6187159696cb\\include", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\s\\spdlog\\v1.14.1\\46e15d49c0c14b08b941f2d73bf78d5e\\include", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\e\\eigen\\3.4.0\\1af8f25c61b04e19afd2699bba8d04c0\\include", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\e\\eigen\\3.4.0\\1af8f25c61b04e19afd2699bba8d04c0\\include\\eigen3", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\o\\onetbb\\2021.12.0\\bf68da2b715a42839a0e48893d932df4\\include", "/EHsc", "/bigobj", "/Zc:preprocessor", "/DNDEBUG", "/Fobuild\\.objs\\test_gradient\\windows\\x64\\release\\tests\\gradient.cpp.obj", "tests\\gradient.cpp"],
-  "file": "tests\\gradient.cpp"
+  "arguments": ["C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.38.33130\\bin\\HostX64\\x64\\cl.exe", "/c", "/nologo", "/W3", "/fp:precise", "/O2", "/std:c++20", "/I.", "/D_CRT_SECURE_NO_WARNINGS", "/DSPDLOG_USE_STD_FORMAT", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\s\\spdlog\\v1.14.1\\46e15d49c0c14b08b941f2d73bf78d5e\\include", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\e\\eigen\\3.4.0\\1af8f25c61b04e19afd2699bba8d04c0\\include", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\e\\eigen\\3.4.0\\1af8f25c61b04e19afd2699bba8d04c0\\include\\eigen3", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\o\\onetbb\\2021.12.0\\bf68da2b715a42839a0e48893d932df4\\include", "/EHsc", "/bigobj", "/Zc:preprocessor", "/DNDEBUG", "/Fobuild\\.objs\\naive_cloth\\windows\\x64\\release\\examples\\naive_cloth.cpp.obj", "examples\\naive_cloth.cpp"],
+  "file": "examples\\naive_cloth.cpp"
 },
 {
   "directory": "D:\\dev\\personal\\c-ipc",
@@ -16,11 +16,6 @@
 },
 {
   "directory": "D:\\dev\\personal\\c-ipc",
-  "arguments": ["C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.38.33130\\bin\\HostX64\\x64\\cl.exe", "/c", "/nologo", "/W3", "/fp:precise", "/O2", "/std:c++20", "/I.", "/D_CRT_SECURE_NO_WARNINGS", "/DSPDLOG_USE_STD_FORMAT", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\s\\spdlog\\v1.14.1\\46e15d49c0c14b08b941f2d73bf78d5e\\include", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\e\\eigen\\3.4.0\\1af8f25c61b04e19afd2699bba8d04c0\\include", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\e\\eigen\\3.4.0\\1af8f25c61b04e19afd2699bba8d04c0\\include\\eigen3", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\o\\onetbb\\2021.12.0\\bf68da2b715a42839a0e48893d932df4\\include", "/EHsc", "/bigobj", "/Zc:preprocessor", "/DNDEBUG", "/Fobuild\\.objs\\naive_cloth\\windows\\x64\\release\\examples\\naive_cloth.cpp.obj", "examples\\naive_cloth.cpp"],
-  "file": "examples\\naive_cloth.cpp"
-},
-{
-  "directory": "D:\\dev\\personal\\c-ipc",
   "arguments": ["C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.38.33130\\bin\\HostX64\\x64\\cl.exe", "/c", "/nologo", "/W3", "/fp:precise", "/O2", "/std:c++20", "/I.", "/D_CRT_SECURE_NO_WARNINGS", "/DSPDLOG_USE_STD_FORMAT", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\s\\spdlog\\v1.14.1\\46e15d49c0c14b08b941f2d73bf78d5e\\include", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\e\\eigen\\3.4.0\\1af8f25c61b04e19afd2699bba8d04c0\\include", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\e\\eigen\\3.4.0\\1af8f25c61b04e19afd2699bba8d04c0\\include\\eigen3", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\o\\onetbb\\2021.12.0\\bf68da2b715a42839a0e48893d932df4\\include", "/EHsc", "/bigobj", "/Zc:preprocessor", "/DNDEBUG", "/Fobuild\\.objs\\tinyobj\\windows\\x64\\release\\examples\\tiny_obj_loader.cc.obj", "examples\\tiny_obj_loader.cc"],
   "file": "examples\\tiny_obj_loader.cc"
 },
@@ -28,4 +23,9 @@
   "directory": "D:\\dev\\personal\\c-ipc",
   "arguments": ["C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.38.33130\\bin\\HostX64\\x64\\cl.exe", "/c", "/nologo", "/W3", "/fp:precise", "/O2", "/std:c++20", "/I.", "/D_CRT_SECURE_NO_WARNINGS", "/DSPDLOG_USE_STD_FORMAT", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\s\\spdlog\\v1.14.1\\46e15d49c0c14b08b941f2d73bf78d5e\\include", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\e\\eigen\\3.4.0\\1af8f25c61b04e19afd2699bba8d04c0\\include", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\e\\eigen\\3.4.0\\1af8f25c61b04e19afd2699bba8d04c0\\include\\eigen3", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\o\\onetbb\\2021.12.0\\bf68da2b715a42839a0e48893d932df4\\include", "/EHsc", "/bigobj", "/Zc:preprocessor", "/DNDEBUG", "/Fobuild\\.objs\\tinyobj\\windows\\x64\\release\\tests\\tiny_obj_loader.cc.obj", "tests\\tiny_obj_loader.cc"],
   "file": "tests\\tiny_obj_loader.cc"
+},
+{
+  "directory": "D:\\dev\\personal\\c-ipc",
+  "arguments": ["C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.38.33130\\bin\\HostX64\\x64\\cl.exe", "/c", "/nologo", "/W3", "/fp:precise", "/O2", "/std:c++20", "/I.", "/D_CRT_SECURE_NO_WARNINGS", "/DSPDLOG_USE_STD_FORMAT", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\c\\catch2\\v3.6.0\\7e203c8196de43ac934e6187159696cb\\include", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\s\\spdlog\\v1.14.1\\46e15d49c0c14b08b941f2d73bf78d5e\\include", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\e\\eigen\\3.4.0\\1af8f25c61b04e19afd2699bba8d04c0\\include", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\e\\eigen\\3.4.0\\1af8f25c61b04e19afd2699bba8d04c0\\include\\eigen3", "/IC:\\Users\\zalouti\\AppData\\Local\\.xmake\\packages\\o\\onetbb\\2021.12.0\\bf68da2b715a42839a0e48893d932df4\\include", "/EHsc", "/bigobj", "/Zc:preprocessor", "/DNDEBUG", "/Fobuild\\.objs\\test_gradient\\windows\\x64\\release\\tests\\gradient.cpp.obj", "tests\\gradient.cpp"],
+  "file": "tests\\gradient.cpp"
 }]
