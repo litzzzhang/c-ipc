@@ -10,11 +10,6 @@ class NaiveStvK {
     const Matrix4r C = Eigen::Matrix<real, 16, 1>{2500., 0., 0.,   2000., 0.,    500., 0., 0.,
                                                   0.,    0., 500., 0.,    2000., 0.,   0., 2500.}
                            .reshaped(4, 4);
-    // const real density_;
-    // const real youngs_modulus_;
-    // const real poisson_ratio_;
-    // const real lambda_;
-    // const real mu_;
 
     NaiveStvK() = default;
     // energy
@@ -36,8 +31,6 @@ class NaiveStvK {
         const std::vector<std::vector<std::array<integer, 3>>> &hessian_map,
         const SparseMatrixXr &hessian_prev) const;
 
-    // const std::pair<Matrix9r, Matrix9r>
-    // ComputeEnergyDensityHessian_SPD(const Matrix3x2r &F) const override;
 };
 
 inline const real NaiveStvK::ComputeEnergyDensity(const Matrix3x2r &F) const {

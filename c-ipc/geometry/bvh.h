@@ -99,7 +99,6 @@ inline void BroadPhaseBVH::detect_collsion(
     collision_primatives_concurrent.reserve(boxes.size() * 1 / 3);
 
     oneapi::tbb::parallel_for(0, static_cast<integer>(boxes.size()), [&](integer i) {
-    // for (integer i = 0; i < static_cast<int>(boxes.size()); i++) {
         std::vector<unsigned int> list;
         bvh.intersect_3D_box(boxes[i].min, boxes[i].max, list);
         for (const unsigned int j : list) {
@@ -111,7 +110,6 @@ inline void BroadPhaseBVH::detect_collsion(
             Primative collision(ai, bi);
             collision_primatives_concurrent.push_back(collision);
         }
-    // }
     });
 
     collision_primatives.reserve(collision_primatives_concurrent.size());

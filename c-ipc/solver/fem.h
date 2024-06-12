@@ -297,12 +297,6 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         const real energy_ss = ComputeStretchingAndShearingEnergy(x_next);
         const real energy_bending = ComputeBendingEnergy(x_next);
         const real energy_barrier = kappa * ComputeBarrierEnergy(x_next);
-        // if (energy_barrier != 0.0) {
-        // integer stop = 1;
-        // printf(
-        //     "E_barrier: %.8f, E_ss: %.6f, E_bend: %.9f, E_k: %.6f\n", energy_barrier,
-        //     energy_ss, energy_bending, energy_kinetic);
-        // }
         return energy_kinetic + energy_ss + energy_bending + energy_barrier;
     };
 
@@ -319,14 +313,8 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         const Matrix3Xr gradient_ss = -ComputeStretchingAndShearingForce(x_next);
         const Matrix3Xr gradient_bending = -ComputeBendingForce(x_next);
         const Matrix3Xr gradient_barrier = -kappa * ComputeBarrierForce(x_next);
-        // std::cout << "barrier gradient" << '\n';
-        // std::cout << gradient_barrier << '\n';
-        // const Matrix3Xr total_grad =
-        // gradient_kinetic + gradient_ss + gradient_bending + gradient_barrier;
         const Matrix3Xr total_grad =
             gradient_kinetic + gradient_ss + gradient_bending + gradient_barrier;
-        // std::cout << "total gradient" << '\n';
-        // std::cout << total_grad.cwiseProduct(free_dof) << '\n';
         return total_grad.cwiseProduct(free_dof).reshaped();
     };
     auto Hess_E = [&](const Matrix3Xr &x_next) -> const SparseMatrixXr {
@@ -359,9 +347,6 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         for (integer i = 0; i < size; i++) {
             if (ddof(i) == 1) { H_modified_nonzeros.push_back({i, i, 1}); }
         }
-        // return H_kinetic + H_ss;
-        integer barrier_nonzeros = static_cast<integer>(H_barrier.nonZeros());
-        // printf("barrier hess nonzeros %d\n", barrier_nonzeros);
         return FromTriplet(size, size, H_modified_nonzeros);
     };
 
@@ -371,7 +356,6 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
     integer newton_iter = 3;
     double prev_min_distance = barrier_model_.closest_distance;
     while (true) {
-        // cipc_assert(newton_iter > 0, "Newton iteration failed");
         Eigen::SimplicialLDLT<SparseMatrixXr> direct_solver(Hess_E(xk));
         const VectorXr pk = direct_solver.solve(-gk);
         barrier_model_.is_built = false;
@@ -382,24 +366,13 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
                      current_mesh_.rest_vertices, xk,
                      xk + pk.reshaped(3, vertex_num).cwiseProduct(free_dof), current_mesh_.edges,
                      current_mesh_.indices, dmin, dhat));
-        Matrix3Xr delta_xk = ls_step * pk.reshaped(3, vertex_num).cwiseProduct(free_dof);
-        // if (ls_step < 1.0) {
-        // int stop = 1;
-        // printf("collision happens at %.3f s in newton iter %d\n", ls_step, newton_iter);
-        // std::cout << xk << '\n';
-        // std::cout << xk + delta_xk << '\n';
-        // std::cout << xk + ls_step * pk.reshaped(3, vertex_num) << '\n';
-        // }
+        
         barrier_model_.is_built = false;
         real E_updated = E(xk + ls_step * pk.reshaped(3, vertex_num));
         integer ls_iter = 50;
         while (E_updated > Ek + 0.01f * ls_step * gk.dot(pk)) {
             barrier_model_.is_built = false;
-            // if (ls_iter == 0) { break; }
-            // cipc_assert(ls_iter > 0, "Line search failed to find sufficient decrease");
             ls_step /= 2;
-            // printf("line search step %.9f\n", ls_step);
-            // std::cout << xk + ls_step * pk.reshaped(3, vertex_num) << '\n';
             E_updated = E(xk + ls_step * pk.reshaped(3, vertex_num));
             ls_iter -= 1;
         }
@@ -407,42 +380,13 @@ inline void Simulator<MaterialType>::Forward(const real timestep) {
         // Exit if no progress could be made.
         if (ls_step * pk.cwiseAbs().maxCoeff() <= 1e-12) { break; }
         double barrier_energy = kappa * ComputeBarrierEnergy(xk);
-        // if (barrier_energy > 0.0) {
-        //     Matrix3Xr barrier_grad = -kappa * ComputeBarrierForce(xk);
-        //     SparseMatrixXr barrier_hess = kappa * ComputeBarrierHessian(xk);
-        //     auto f = [&](const Matrix3Xr &pos) {
-        //         return kappa * ComputeBarrierEnergy(pos);
-        //     };
-
-        //     auto g = [&](const Matrix3Xr &pos) {
-        //         Matrix3Xr grad = -kappa * ComputeBarrierForce(pos);
-        //         // std::cout << grad << '\n';
-        //         return grad;
-        //     };
-        //     std::default_random_engine rng;
-        //     rng.seed((unsigned)std::chrono::system_clock::now().time_since_epoch().count());
-        //     auto [numeric1, analytic1] =
-        //         finite_gradient<std::default_random_engine, Matrix3Xr>(xk, rng, f, barrier_grad);
-        //     hessian_diff_result result2 =
-        //         finite_hessian<std::default_random_engine, Matrix3Xr, SparseMatrixXr>(
-        //             xk, rng, g, barrier_hess);
-        //     double numeric2 = result2.numeric_diff.squaredNorm();
-        //     double analytic2 = result2.analytic_diff.squaredNorm();
-        //     printf("[grad] numeric diff:%.9f, analytic diff:%.9f\n", numeric1, analytic1);
-        //     printf("[hess] numeric diff:%.9f, analytic diff:%.9f\n", numeric2, analytic2);
-        // }
 
         Ek = E(xk);
         gk = grad_E(xk);
-        // double prev_kappa = kappa;
-        // kappa = update_barrier_stiffness(
-        //     prev_min_distance, barrier_model_.closest_distance, kappa_max, kappa, dmin);
-        // if (kappa != prev_kappa) {}
 
         kappa = update_barrier_stiffness(
             prev_min_distance, barrier_model_.closest_distance, kappa_max, kappa, dmin);
         prev_min_distance = barrier_model_.closest_distance;
-        // printf("****** min distance: %.14f\n", std::sqrt(prev_min_distance));
         double res = std::sqrt(pk.squaredNorm() / vertex_num) * inv_h;
         if (res < 1e-3) { newton_iter -= 1; }
         if (newton_iter <= 0) { break; }

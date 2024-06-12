@@ -118,7 +118,6 @@ class BarrierPotential {
             [](double x, double y) {
                 return x + y;
             });
-        // if (ee_energy > 0.0) { printf("*********** edge edge collision ****************\n"); }
         vf_energy = oneapi::tbb::parallel_deterministic_reduce(
             oneapi::tbb::blocked_range<integer>(0, vf_num), 0.0,
             [&](oneapi::tbb::blocked_range<integer> r, double local) {
@@ -133,21 +132,6 @@ class BarrierPotential {
             [](double x, double y) {
                 return x + y;
             });
-        // if (vf_energy > 0.0) { printf("*********** vertex face collision ****************\n"); }
-        // for (integer i = 0; i < edge_edge_collisions.size(); i++) {
-        //     EdgeEdgeCollision collision = edge_edge_collisions[i];
-        //     Matrix3x4r curr_pos = collision.vertices(vertices, edges, faces);
-        //     double dist = collision.distance(curr_pos);
-        //     ee_energy +=
-        //         collision.mollifier(curr_pos, collision.eps) * cipc_barrier(dist, dhat, dmin);
-        // }
-        // for (integer i = 0; i < vertex_face_collisions.size(); i++) {
-        //     VertexFaceCollision collision = vertex_face_collisions[i];
-        //     Matrix3x4r curr_pos = collision.vertices(vertices, edges, faces);
-        //     double dist = collision.distance(curr_pos);
-        //     vf_energy +=
-        //         collision.mollifier(curr_pos, collision.eps) * cipc_barrier(dist, dhat, dmin);
-        // }
         return ee_energy + vf_energy;
     }
 
@@ -190,34 +174,6 @@ class BarrierPotential {
             gradient_per_collision[i + ee_num] = f_grad * d_grad;
         });
 
-        // for (integer i = 0; i < edge_edge_collisions.size(); i++) {
-        //     EdgeEdgeCollision collision = edge_edge_collisions[i];
-        //     gradient_per_collision[i] = Matrix3x4r::Zero();
-        //     gradient_map[i] = collision.vertices_idx(edges, faces);
-        //     Matrix3x4r curr_pos = collision.vertices(vertices, edges, faces);
-        //     const double d = collision.distance(curr_pos);
-        //     const Matrix3x4r d_grad = collision.distance_grad(curr_pos);
-        //     const double f = cipc_barrier(d, dhat, dmin);
-        //     const double f_grad = cipc_barrier_first_derivative(d, dhat, dmin);
-        //     const double m = collision.mollifier(curr_pos, collision.eps);
-        //     const Matrix3x4r m_grad = collision.mollifier_grad(curr_pos, collision.eps);
-        //     gradient_per_collision[i] = f * m_grad + m * f_grad * d_grad;
-        // }
-
-        // integer ee_collision_size = static_cast<integer>(edge_edge_collisions.size());
-        // for (integer i = 0; i < vertex_face_collisions.size(); i++) {
-        //     VertexFaceCollision collision = vertex_face_collisions[i];
-        //     gradient_per_collision[i + ee_collision_size] = Matrix3x4r::Zero();
-        //     gradient_map[i + ee_collision_size] = collision.vertices_idx(edges, faces);
-        //     Matrix3x4r curr_pos = collision.vertices(vertices, edges, faces);
-        //     const double d = collision.distance(curr_pos);
-        //     const Matrix3x4r d_grad = collision.distance_grad(curr_pos);
-        //     const double f = cipc_barrier(d, dhat, dmin);
-        //     const double f_grad = cipc_barrier_first_derivative(d, dhat, dmin);
-        //     const double m = collision.mollifier(curr_pos, collision.eps);
-        //     const Matrix3x4r m_grad = collision.mollifier_grad(curr_pos, collision.eps);
-        //     gradient_per_collision[i + ee_collision_size] = f * m_grad + m * f_grad * d_grad;
-        // }
         for (integer i = 0; i < size(); i++) {
             Vector4i index = gradient_map[i];
             gradient(Eigen::all, index) += gradient_per_collision[i];
@@ -297,70 +253,6 @@ class BarrierPotential {
 
             hessian_per_collision[i + ee_num] = project_to_spd(hessian_per_collision[i + ee_num]);
         });
-        // for (integer i = 0; i < ee_collision_size; i++) {
-        //     EdgeEdgeCollision collision = edge_edge_collisions[i];
-        //     hessian_per_collision[i] = Matrix12r::Zero();
-        //     hessian_map[i] = collision.vertices_idx(edges, faces);
-        //     Matrix3x4r curr_pos = collision.vertices(vertices, edges, faces);
-        //     const double d = collision.distance(curr_pos);
-        //     const Matrix3x4r d_grad = collision.distance_grad(curr_pos);
-        //     const Matrix12r d_hess = collision.distance_hess(curr_pos);
-        //     const double f_grad = cipc_barrier_first_derivative(d, dhat, dmin);
-        //     const double f_hess = cipc_barrier_second_derivative(d, dhat, dmin);
-
-        //     if (!collision.is_mollified()) {
-        //         hessian_per_collision[i] =
-        //             f_hess * d_grad.reshaped() * d_grad.reshaped().transpose() + f_grad * d_hess;
-        //     } else {
-        //         const double f = cipc_barrier(d, dhat, dmin);
-        //         const double m = collision.mollifier(curr_pos, collision.eps);
-        //         const Matrix3x4r m_grad = collision.mollifier_grad(curr_pos, collision.eps);
-        //         const Matrix12r m_hess = collision.mollifier_hess(curr_pos, collision.eps);
-
-        //         hessian_per_collision[i] =
-        //             f * m_hess
-        //             + f_grad
-        //                   * (d_grad.reshaped() * m_grad.reshaped().transpose()
-        //                      + m_grad.reshaped() * d_grad.reshaped().transpose())
-        //             + m * f_hess * d_grad.reshaped() * d_grad.reshaped().transpose()
-        //             + m * f_grad * d_hess;
-        //     }
-
-        //     hessian_per_collision[i] = project_to_spd(hessian_per_collision[i]);
-        // }
-
-        // for (integer i = 0; i < vertex_face_collisions.size(); i++) {
-        //     VertexFaceCollision collision = vertex_face_collisions[i];
-        //     hessian_per_collision[i + ee_collision_size] = Matrix12r::Zero();
-        //     hessian_map[i + ee_collision_size] = collision.vertices_idx(edges, faces);
-        //     Matrix3x4r curr_pos = collision.vertices(vertices, edges, faces);
-        //     const double d = collision.distance(curr_pos);
-        //     const Matrix3x4r d_grad = collision.distance_grad(curr_pos);
-        //     const Matrix12r d_hess = collision.distance_hess(curr_pos);
-        //     const double f_grad = cipc_barrier_first_derivative(d, dhat, dmin);
-        //     const double f_hess = cipc_barrier_second_derivative(d, dhat, dmin);
-
-        //     if (!collision.is_mollified()) {
-        //         hessian_per_collision[i + ee_collision_size] =
-        //             f_hess * d_grad.reshaped() * d_grad.reshaped().transpose() + f_grad * d_hess;
-        //     } else {
-        //         const double f = cipc_barrier(d, dhat, dmin);
-        //         const double m = collision.mollifier(curr_pos, collision.eps);
-        //         const Matrix3x4r m_grad = collision.mollifier_grad(curr_pos, collision.eps);
-        //         const Matrix12r m_hess = collision.mollifier_hess(curr_pos, collision.eps);
-
-        //         hessian_per_collision[i + ee_collision_size] =
-        //             f * m_hess
-        //             + f_grad
-        //                   * (d_grad.reshaped() * m_grad.reshaped().transpose()
-        //                      + m_grad.reshaped() * d_grad.reshaped().transpose())
-        //             + m * f_hess * d_grad.reshaped() * d_grad.reshaped().transpose()
-        //             + m * f_grad * d_hess;
-        //     }
-
-        //     hessian_per_collision[i + ee_collision_size] = project_to_spd(hessian_per_collision[i
-        //     + ee_collision_size]);
-        // }
 
         const integer dim = 3;
         std::vector<Eigen::Triplet<real>> barrier_hessian_nonzeros;
@@ -388,17 +280,6 @@ class BarrierPotential {
         const Matrix2Xi &edges, const Matrix3Xi &faces, const double dmin, const double dhat) {
 
         double inflation_radius = 0.5 * (dmin + dhat);
-        // if (!is_built) { build(vertices0, vertices1, rest_vertices, edges, faces, dhat, dmin); }
-        // double time_of_impact = 1.0;
-        // for (integer i = 0; i < size(); i++) {
-        //     const PrimativeCollision &collision = (*this)[i];
-        //     const Vector4i idx = collision.vertices_idx(edges, faces);
-        //     const Matrix3x4r pos0 = vertices0(Eigen::all, idx);
-        //     const Matrix3x4r pos1 = vertices1(Eigen::all, idx);
-        //     time_of_impact = std::min(
-        //         time_of_impact, collision.compute_accd_timestep(pos0, pos1, dmin,
-        //         time_of_impact));
-        // }
         ConstrainSet c;
         c.build(vertices0, vertices1, edges, faces, inflation_radius);
         return c.compute_accd_timestep(vertices0, vertices1, edges, faces, dmin);

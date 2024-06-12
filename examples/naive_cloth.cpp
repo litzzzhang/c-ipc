@@ -11,7 +11,7 @@ using namespace cipc;
 
 int main() {
     spdlog::set_pattern("[%m-%d %T] %^[%l]%$ %v");
-    const std::string output_dir("./output/naive30");
+    const std::string output_dir("./output/ping30");
     const std::string objfiles_dir("./obj_files");
     const std::string obj_file("mat30x30.obj");
     // print information
@@ -38,9 +38,9 @@ int main() {
         gravity(2, i) = -9.8f;
     }
     // fix some points
-    // dirichlet.col(465) = curr_pos.col(210);
-    dirichlet.col(0) = curr_pos.col(0);
-    dirichlet.col(vertex_num - 1) = curr_pos.col(vertex_num - 1);
+    dirichlet.col(465) = curr_pos.col(465);
+    // dirichlet.col(0) = curr_pos.col(0);
+    // dirichlet.col(vertex_num - 1) = curr_pos.col(vertex_num - 1);
     // dirichlet.col(1) = curr_pos.col(1);
     // dirichlet.col(vertex_num - 1) = curr_pos.col(vertex_num - 1);
     sim.set_position(curr_pos);
