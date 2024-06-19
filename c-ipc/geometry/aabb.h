@@ -50,12 +50,12 @@ class AABB {
         const Matrix3Xr &vertices, std::vector<AABB> &vertex_boxes, const double inflation_radius) {
         integer vertex_num = static_cast<integer>(vertices.cols());
         vertex_boxes.resize(vertex_num);
-        for (integer i = 0; i < vertex_num; i++) {
+        oneapi::tbb::parallel_for(0, vertex_num, [&](integer i){
             AABB v_aabb(vertices.col(i), vertices.col(i));
             v_aabb.conservative_inflation(inflation_radius);
             v_aabb.vertex_ids = {i, -1, -1};
             vertex_boxes[i] = v_aabb;
-        }
+        });
     }
 
     // dynamic version for ccd
@@ -64,14 +64,14 @@ class AABB {
         const double inflation_radius) {
         integer vertex_num = static_cast<integer>(x0.cols());
         vertex_boxes.resize(vertex_num);
-        for (integer i = 0; i < vertex_num; i++) {
+        oneapi::tbb::parallel_for(0, vertex_num, [&](integer i){
             AABB aabb0(x0.col(i), x0.col(i));
             AABB aabb1(x1.col(i), x1.col(i));
             aabb0.conservative_inflation(inflation_radius);
             aabb1.conservative_inflation(inflation_radius);
             vertex_boxes[i] = AABB(aabb0, aabb1);
             vertex_boxes[i].vertex_ids = {i, -1, -1};
-        }
+        });
     }
 
     static void build_edge_boxes(
@@ -79,12 +79,12 @@ class AABB {
         std::vector<AABB> &edge_boxes) {
         integer edge_num = static_cast<integer>(edges.cols());
         edge_boxes.resize(edge_num);
-        for (integer i = 0; i < edge_num; i++) {
+        oneapi::tbb::parallel_for(0, edge_num, [&](integer i){
             integer e0 = edges(0, i), e1 = edges(1,i); 
             AABB aabb(vertex_boxes[edges(0, i)], vertex_boxes[edges(1, i)]);
             aabb.vertex_ids = {edges(0, i), edges(1, i), -1};
             edge_boxes[i] = aabb;
-        }
+        });
     }
 
     static void build_face_boxes(
@@ -92,12 +92,12 @@ class AABB {
         std::vector<AABB> &face_boxes) {
         integer face_num = static_cast<integer>(faces.cols());
         face_boxes.resize(face_num);
-        for (integer i = 0; i < face_num; i++) {
+        oneapi::tbb::parallel_for(0, face_num, [&](integer i){
             AABB aabb(
                 vertex_boxes[faces(0, i)], vertex_boxes[faces(1, i)], vertex_boxes[faces(2, i)]);
             aabb.vertex_ids = {faces(0, i), faces(1, i), faces(2, i)};
             face_boxes[i] = aabb;
-        }
+        });
     }
 };
 
